@@ -4,65 +4,66 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base AirAware Theme Tokens */
+    --background: 120 18% 97.5%;     /* #F7FAF7 */
+    --foreground: 162 60% 23%;       /* #175C48 Forest Green */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;               /* Pure white card surface */
+    --card-foreground: 162 60% 23%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 162 60% 23%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 156 55% 66%;          /* #78D6B0 Mint Green */
+    --primary-foreground: 162 60% 20%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 42 100% 95%;        /* #FFF8E8 Soft Cream */
+    --secondary-foreground: 162 60% 23%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 120 12% 92%;
+    --muted-foreground: 162 25% 42%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 199 100% 87%;          /* #BFE8FF Sky Blue */
+    --accent-foreground: 162 60% 23%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;        /* Severe red */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
+    --border: 150 20% 90%;
+    --input: 150 20% 90%;
+    --ring: 156 55% 66%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 162 55% 6%;
+    --foreground: 120 20% 95%;
 
-    --card: 224 71% 7%;
-    --card-foreground: 213 31% 91%;
+    --card: 162 50% 9%;
+    --card-foreground: 120 20% 95%;
 
-    --popover: 224 71% 7%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 162 50% 9%;
+    --popover-foreground: 120 20% 95%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 222.2 47.4% 1.2%;
+    --primary: 156 55% 66%;
+    --primary-foreground: 162 60% 15%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 162 40% 16%;
+    --secondary-foreground: 120 20% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 162 40% 14%;
+    --muted-foreground: 150 20% 70%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 162 40% 18%;
+    --accent-foreground: 120 20% 95%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+    --border: 162 30% 18%;
+    --input: 162 30% 18%;
+    --ring: 156 55% 66%;
   }
 }
 
@@ -71,7 +72,47 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased selection:bg-brand-mint-200 selection:text-brand-forest-900;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-brand-forest-900 dark:text-emerald-100;
+  }
+}
+
+/* Custom Soft Glass & Card Gradients */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(120, 214, 176, 0.25);
+}
+
+.gradient-mint-cream {
+  background: linear-gradient(135deg, #F0FAF5 0%, #FFF8E8 100%);
+}
+
+.gradient-sky-mint {
+  background: linear-gradient(135deg, #BFE8FF 0%, #78D6B0 100%);
+}
+
+.gradient-forest-mint {
+  background: linear-gradient(135deg, #175C48 0%, #278561 100%);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F7FAF7;
+}
+::-webkit-scrollbar-thumb {
+  background: #C1EBD7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #78D6B0;
 }
