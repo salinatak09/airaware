@@ -12,6 +12,7 @@ import {
   ArrowRight,
   SunMedium,
   Filter,
+  Sparkles,
 } from "lucide-react";
 import { AqiCard } from "@/components/ui/aqi-card";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -60,7 +61,13 @@ export default function HomePage() {
             </Subtitle>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link href="/onboarding">
+              <Button variant="cream" size="sm" className="gap-2 font-bold shadow-xs">
+                <Sparkles className="h-4 w-4 text-amber-600" />
+                <span>Onboarding Wizard</span>
+              </Button>
+            </Link>
             <Link href="/my-day">
               <Button variant="forest" size="sm" className="gap-2 font-bold shadow-xs">
                 <CalendarCheck className="h-4 w-4" />

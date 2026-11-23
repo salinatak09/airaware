@@ -126,16 +126,26 @@ export function UserProfileMenu() {
         </div>
 
         {/* Quick Links */}
-        <div className="mt-4 pt-4 border-t border-brand-mint-100 flex items-center justify-between text-xs">
+        <div className="mt-4 pt-4 border-t border-brand-mint-100 flex flex-col gap-2 text-xs">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/impact"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-1.5 font-bold text-brand-forest-800 hover:underline"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-brand-forest-700" />
+              <span>View Clean Air Badges</span>
+            </Link>
+            <span className="text-brand-forest-700/60 font-semibold">{userStats.level}</span>
+          </div>
+
           <Link
-            href="/impact"
+            href="/onboarding"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-1.5 font-bold text-brand-forest-800 hover:underline"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-brand-mint-100 text-brand-forest-900 font-bold hover:bg-brand-mint-200 transition-colors"
           >
-            <Sparkles className="h-3.5 w-3.5 text-brand-forest-700" />
-            <span>View Clean Air Badges</span>
+            <span>Restart Onboarding Setup Wizard</span>
           </Link>
-          <span className="text-brand-forest-700/60 font-semibold">{userStats.level}</span>
         </div>
       </DialogContent>
     </Dialog>
