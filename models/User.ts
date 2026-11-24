@@ -8,7 +8,8 @@ export interface IFamilyMember {
   notes?: string;
 }
 
-export interface IUser extends Document {
+export interface IUserData {
+  _id?: string;
   name: string;
   email: string;
   passwordHash?: string;
@@ -30,9 +31,11 @@ export interface IUser extends Document {
     aqiThresholdAlert: number;
     temperatureUnit: "celsius" | "fahrenheit";
   };
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+export interface IUserDocument extends Document, Omit<IUserData, "_id"> {}
 
 const FamilyMemberSchema = new Schema<IFamilyMember>(
   {
@@ -56,7 +59,7 @@ const FamilyMemberSchema = new Schema<IFamilyMember>(
   { _id: true }
 );
 
-const UserSchema = new Schema<IUser>(
+const UserSchema = new Schema<IUserDocument>(
   {
     name: { type: String, required: true, trim: true },
     email: {
@@ -96,5 +99,5 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Prevent re-compilation of model in Next.js development hot-reloading
-export const User: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export const User: Model<IUserDocument> =
+  mongoose.models.User || mongoose.model<IUserDocument>("User", UserSchema);

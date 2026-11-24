@@ -1,8 +1,9 @@
+import "server-only";
 import { NextRequest } from "next/server";
-import { apiSuccess } from "@/server/api/response";
-import { withErrorHandler } from "@/server/api/error-handler";
-import { getDatabaseStatus } from "@/lib/db";
-import { env } from "@/lib/env";
+import { apiSuccess } from "@/server/utils/response";
+import { withApiHandler } from "@/server/middleware/with-api-handler";
+import { getDatabaseStatus } from "@/server/api/db/connection";
+import { serverConfig } from "@/server/config/env";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Health check endpoint for system monitoring, uptime tracking, and service validation.
  * GET /api/health
  */
-export const GET = withErrorHandler(async (_request: NextRequest) => {
+export const GET = withApiHandler(async (_req: NextRequest) => {
   const dbStatus = getDatabaseStatus();
   const uptimeSeconds = Math.floor(process.uptime());
 
@@ -18,20 +19,24 @@ export const GET = withErrorHandler(async (_request: NextRequest) => {
     status: "ok",
     service: "AirAware API",
     version: "0.1.0",
-    environment: env.NODE_ENV,
+    environment: serverConfig.NODE_ENV,
     timestamp: new Date().toISOString(),
     uptime: `${uptimeSeconds}s`,
     database: {
       status: dbStatus.stateLabel,
       connected: dbStatus.isConnected,
+      host: dbStatus.host ?? "localhost",
     },
-    services: {
-      geminiConfigured: Boolean(env.GEMINI_API_KEY && env.GEMINI_API_KEY !== "dummy_gemini_key_for_dev"),
-      openMeteoConfigured: Boolean(env.OPEN_METEO_AIR_QUALITY_URL),
+    integrations: {
+      geminiConfigured: Boolean(
+        serverConfig.GEMINI_API_KEY &&
+        serverConfig.GEMINI_API_KEY !== "dummy_gemini_key_for_dev"
+      ),
+      openMeteoConfigured: Boolean(serverConfig.OPEN_METEO_AIR_QUALITY_URL),
     },
   };
 
   return apiSuccess(healthData, {
-    message: "AirAware system health operational.",
+    message: "AirAware API services operational",
   });
 });
