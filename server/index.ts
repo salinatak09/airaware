@@ -35,3 +35,4 @@ export * from "./services/plan.service";
 export * from "./services/impact.service";
 export * from "./services/community.service";
 export * from "./services/notification.service";
+export * from "./services/safety";

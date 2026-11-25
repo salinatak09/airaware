@@ -1,9 +1,9 @@
 import "server-only";
-import {
+import type {
   IndianNaqiCategory,
   SubIndexDetail,
   UsAqiCategory,
-} from "@/types/aqi";
+} from "../../types/aqi.ts";
 
 /**
  * CPCB Indian National Air Quality Index (NAQI) Breakpoints

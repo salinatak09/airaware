@@ -2,6 +2,7 @@ import "server-only";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { serverConfig } from "@/server/config/env";
 import { AssistantPersona } from "@/types";
+import { safetyEngine } from "./safety";
 
 export interface AiPromptContext {
   prompt: string;
@@ -43,12 +44,37 @@ export class AiService {
     const aqi = ctx.currentAqi ?? 185;
     const city = ctx.city ?? "New Delhi";
 
+    // 1. Evaluate safety deterministically FIRST.
+    // The engine must NOT rely on Gemini for basic AQI safety decisions.
+    const safety = safetyEngine.evaluateSafety({
+      aqi,
+      householdProfile: {
+        hasChildren: ctx.persona === "pediatric_advisor" || ctx.hasSensitiveMembers,
+        hasRespiratorySensitivity: ctx.hasSensitiveMembers,
+      },
+    });
+
+    const deterministicSuggestedActions = [
+      ...safety.recommendations.outdoorActivity.slice(0, 2),
+      ...safety.recommendations.indoorEnvironment.slice(0, 2),
+    ];
+
     if (this.client) {
       try {
         const model = this.client.getGenerativeModel({ model: "gemini-1.5-flash" });
         const systemInstruction = `You are Aero, a friendly, encouraging, and deeply knowledgeable urban air quality assistant for families living in ${city}.
-Current AQI is ${aqi}. Persona: ${persona}.
-Provide clear, protective, non-alarmist, scientifically accurate advice. Format response concisely.`;
+Current Indian NAQI: ${aqi} (Category: ${safety.category}, Severity: ${safety.severity}).
+Persona: ${persona}.
+
+CRITICAL DETERMINISTIC SAFETY RULES (MUST BE STRICTLY FOLLOWED - NEVER OVERRIDE):
+- Mask Requirement: ${safety.restrictions.maskRequired ? `Mandatory (${safety.restrictions.maskTypeRecommended})` : "Optional"}
+- Outdoor Sports Allowed: ${!safety.restrictions.outdoorSportsRestricted}
+- Window Ventilation: ${safety.restrictions.windowVentilationAllowed ? "Allowed during afternoon solar window" : "Prohibited (Keep windows tightly sealed)"}
+- Prohibited Activities: ${safety.restrictions.prohibitedActivities.join("; ") || "None"}
+- Active Warnings: ${safety.warnings.map(w => `${w.title}: ${w.message}`).join(" | ") || "None"}
+- Medical Disclaimer: Non-diagnostic. Never diagnose conditions or guarantee that any environment is completely safe.
+
+Provide clear, protective, non-alarmist, scientifically accurate advice adhering strictly to these safety constraints. Format response concisely.`;
 
         const result = await model.generateContent({
           contents: [
@@ -62,17 +88,13 @@ Provide clear, protective, non-alarmist, scientifically accurate advice. Format 
         const reply = result.response.text();
         return {
           reply,
-          suggestedActions: [
-            "Check indoor HEPA filter status",
-            "Keep bedroom windows closed during peak traffic hours",
-            "Carry an N95 mask for afternoon errands",
-          ],
+          suggestedActions: deterministicSuggestedActions,
           recommendedWindows: [
             {
-              startTime: "12:00 PM",
-              endTime: "03:00 PM",
-              safetyLevel: "caution",
-              notes: "Lowest particulate dip of the day",
+              startTime: "12:30 PM",
+              endTime: "03:30 PM",
+              safetyLevel: safety.severity === "low" ? "safe" : "caution",
+              notes: "Thermal solar mixing dissipates ground particulate concentrations",
             },
           ],
         };
@@ -81,50 +103,60 @@ Provide clear, protective, non-alarmist, scientifically accurate advice. Format 
       }
     }
 
-    // Curated contextual fallback
-    return this.getFallbackAdvice(ctx);
+    // Curated contextual fallback adhering to deterministic safety evaluation
+    return this.getFallbackAdvice(ctx, safety);
   }
 
-  private getFallbackAdvice(ctx: AiPromptContext): AiResponseResult {
+  private getFallbackAdvice(
+    ctx: AiPromptContext,
+    safety = safetyEngine.evaluateSafety({
+      aqi: ctx.currentAqi ?? 185,
+      householdProfile: {
+        hasChildren: ctx.persona === "pediatric_advisor" || ctx.hasSensitiveMembers,
+        hasRespiratorySensitivity: ctx.hasSensitiveMembers,
+      },
+    })
+  ): AiResponseResult {
     const aqi = ctx.currentAqi ?? 185;
-    const isHigh = aqi > 150;
+    const isSevere = safety.severity === "severe" || safety.severity === "critical";
+
+    const actions = [
+      ...safety.recommendations.outdoorActivity.slice(0, 2),
+      ...safety.recommendations.indoorEnvironment.slice(0, 2),
+    ];
 
     if (ctx.persona === "pediatric_advisor") {
       return {
-        reply: `Hi! Aero here. With current AQI around ${aqi}, children's developing lungs absorb up to 50% more air per pound of body weight. For outdoor recess or playtime, we recommend indoor creative play between 7 AM and 11 AM when ground inversion traps particulate matter. If leaving home, ensure an snug-fitting KF94 or child-size N95 mask is worn.`,
-        suggestedActions: [
-          "Swap outdoor soccer with indoor obstacle courses",
-          "Set bedroom air purifier to medium-high speed 1 hour before bedtime",
-          "Rinse eyes and face with cool water after school commute",
-        ],
+        reply: `Hi! Aero here. With current Indian AQI around ${aqi} (${safety.category}), children's developing lungs absorb significantly more air per pound of body weight. ${
+          safety.restrictions.maskRequired
+            ? `If leaving home, ensure an airtight ${safety.restrictions.maskTypeRecommended} mask is worn.`
+            : "Light outdoor activities are permissible during afternoon hours."
+        } Keep indoor air filtration active.`,
+        suggestedActions: actions,
         recommendedWindows: [
           {
             startTime: "01:00 PM",
             endTime: "03:30 PM",
-            safetyLevel: "caution",
-            notes: "Best thermal dispersion period",
+            safetyLevel: isSevere ? "avoid" : "caution",
+            notes: "Best thermal dispersion period of the day",
           },
         ],
       };
     }
 
     return {
-      reply: `Hello! I'm Aero. Today's AQI in ${ctx.city || "your area"} is ${aqi} (${isHigh ? "Unhealthy" : "Moderate"}). ${
-        isHigh
-          ? "Fine particulates (PM2.5) are currently elevated. The cleanest air window today is expected in early afternoon when atmospheric mixing peaks."
-          : "Air quality is manageable today, with moderate pollution levels."
+      reply: `Hello! I'm Aero. Today's AQI in ${ctx.city || "your area"} is ${aqi} (${safety.category.toUpperCase()}). ${
+        safety.restrictions.maskRequired
+          ? `Elevated particulate levels detected. Wear an ${safety.restrictions.maskTypeRecommended} mask when outdoors and seal living quarters.`
+          : "Air quality is currently manageable. Sensitive household members should monitor prolonged exertion."
       }`,
-      suggestedActions: [
-        "Plan outdoor runs or groceries for the afternoon window",
-        "Keep windows shut; rely on mechanical filtration",
-        "Turn on kitchen exhaust while cooking to prevent indoor PM spikes",
-      ],
+      suggestedActions: actions,
       recommendedWindows: [
         {
           startTime: "12:30 PM",
           endTime: "03:30 PM",
-          safetyLevel: isHigh ? "caution" : "safe",
-          notes: "Lower ground pollution concentrations",
+          safetyLevel: isSevere ? "avoid" : safety.severity === "low" ? "safe" : "caution",
+          notes: "Lower ground pollution concentrations due to diurnal solar mixing",
         },
       ],
     };

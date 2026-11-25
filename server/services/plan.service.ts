@@ -1,4 +1,5 @@
 import "server-only";
+import { safetyEngine } from "./safety";
 
 export interface ScheduledActivity {
   id: string;
@@ -56,10 +57,18 @@ export class PlanService {
     },
   ];
 
-  async getTodayPlan(): Promise<DayPlan> {
+  async getTodayPlan(aqi = 185): Promise<DayPlan> {
+    const safety = safetyEngine.evaluateSafety({ aqi });
+
+    let overallSuitability: DayPlan["overallSuitability"] = "moderate";
+    if (safety.severity === "low") overallSuitability = "good";
+    else if (safety.severity === "moderate") overallSuitability = "moderate";
+    else if (safety.severity === "high") overallSuitability = "caution";
+    else overallSuitability = "poor";
+
     return {
       date: new Date().toISOString().split("T")[0],
-      overallSuitability: "caution",
+      overallSuitability,
       safestOutdoorWindow: {
         start: "12:30 PM",
         end: "03:30 PM",
@@ -69,10 +78,25 @@ export class PlanService {
     };
   }
 
-  async addActivity(activity: Omit<ScheduledActivity, "id">): Promise<ScheduledActivity> {
+  async addActivity(activity: Omit<ScheduledActivity, "id">, currentAqi = 185): Promise<ScheduledActivity> {
+    const actSafety = safetyEngine.evaluateSafety({
+      aqi: currentAqi,
+      activityContext: {
+        plannedActivityType: activity.activityType,
+        durationMinutes: activity.durationMinutes,
+        scheduledTimeOfDay: activity.scheduledTime,
+      },
+    });
+
+    const mappedRisk: ScheduledActivity["airRiskLevel"] =
+      actSafety.severity === "critical" ? "severe" : actSafety.severity;
+
     const newAct: ScheduledActivity = {
       ...activity,
       id: `act_${Date.now()}`,
+      airRiskLevel: activity.airRiskLevel || mappedRisk,
+      recommendedMask: actSafety.restrictions.maskRequired,
+      notes: activity.notes || actSafety.recommendations.outdoorActivity[0] || "Follow local air quality advisories.",
     };
     PlanService.mockActivities.push(newAct);
     return newAct;
