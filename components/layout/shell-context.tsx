@@ -1,11 +1,13 @@
 "use client";
 
-import * as React from "react";
+import { createContext, useState, useContext, useCallback, ReactNode } from "react";
 
 export interface LocationItem {
   id: string;
   city: string;
   area: string;
+  latitude?: number;
+  longitude?: number;
   aqi: number;
   pm25: number;
   status: string;
@@ -32,11 +34,11 @@ export interface FamilyProfile {
 }
 
 export const MOCK_LOCATIONS: LocationItem[] = [
-  { id: "delhi-cp", city: "New Delhi", area: "Connaught Place", aqi: 142, pm25: 42.1, status: "Sensitive", isHome: true },
-  { id: "delhi-south", city: "New Delhi", area: "R.K. Puram", aqi: 188, pm25: 78.4, status: "Unhealthy" },
-  { id: "mumbai-bandra", city: "Mumbai", area: "Bandra West", aqi: 82, pm25: 26.5, status: "Moderate" },
-  { id: "bengaluru-ind", city: "Bengaluru", area: "Indiranagar", aqi: 44, pm25: 11.2, status: "Good" },
-  { id: "kolkata-salt", city: "Kolkata", area: "Salt Lake", aqi: 156, pm25: 58.0, status: "Unhealthy" },
+  { id: "delhi-cp", city: "New Delhi", area: "Connaught Place", latitude: 28.6315, longitude: 77.2167, aqi: 105, pm25: 59, status: "Moderate", isHome: true },
+  { id: "delhi-south", city: "New Delhi", area: "R.K. Puram", latitude: 28.5665, longitude: 77.1821, aqi: 188, pm25: 78.4, status: "Unhealthy" },
+  { id: "mumbai-bandra", city: "Mumbai", area: "Bandra West", latitude: 19.0596, longitude: 72.8295, aqi: 82, pm25: 26.5, status: "Moderate" },
+  { id: "bengaluru-ind", city: "Bengaluru", area: "Indiranagar", latitude: 12.9784, longitude: 77.6408, aqi: 44, pm25: 11.2, status: "Good" },
+  { id: "kolkata-salt", city: "Kolkata", area: "Salt Lake", latitude: 22.5867, longitude: 88.4178, aqi: 156, pm25: 58.0, status: "Unhealthy" },
 ];
 
 export const MOCK_FAMILY: FamilyProfile[] = [
@@ -90,20 +92,20 @@ interface ShellContextType {
   };
 }
 
-const ShellContext = React.createContext<ShellContextType | undefined>(undefined);
+const ShellContext = createContext<ShellContextType | undefined>(undefined);
 
-export function ShellProvider({ children }: { children: React.ReactNode }) {
-  const [currentLocation, setCurrentLocation] = React.useState<LocationItem>(MOCK_LOCATIONS[0]);
-  const [activeFamilyMember, setActiveFamilyMember] = React.useState<FamilyProfile>(MOCK_FAMILY[0]);
-  const [notifications, setNotifications] = React.useState<NotificationAlert[]>(MOCK_NOTIFICATIONS);
+export function ShellProvider({ children }: { children: ReactNode }) {
+  const [currentLocation, setCurrentLocation] = useState<LocationItem>(MOCK_LOCATIONS[0]);
+  const [activeFamilyMember, setActiveFamilyMember] = useState<FamilyProfile>(MOCK_FAMILY[0]);
+  const [notifications, setNotifications] = useState<NotificationAlert[]>(MOCK_NOTIFICATIONS);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const markAllNotificationsRead = React.useCallback(() => {
+  const markAllNotificationsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
   }, []);
 
-  const dismissNotification = React.useCallback((id: string) => {
+  const dismissNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
@@ -133,7 +135,7 @@ export function ShellProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useShell() {
-  const context = React.useContext(ShellContext);
+  const context = useContext(ShellContext);
   if (!context) {
     throw new Error("useShell must be used within a ShellProvider");
   }

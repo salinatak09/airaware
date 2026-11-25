@@ -199,3 +199,7 @@ export interface ApiResponseError {
 }
 
 export type ApiResponse<T> = ApiResponseSuccess<T> | ApiResponseError;
+
+// Re-export extended AQI types
+export * from "./aqi";
+

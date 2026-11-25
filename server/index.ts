@@ -11,6 +11,7 @@ export * from "./api/db/connection";
 export * from "./utils/errors";
 export * from "./utils/response";
 export * from "./utils/validation";
+export * from "./utils/aqi-calculator";
 
 // Middleware
 export * from "./middleware/logger";
@@ -27,6 +28,7 @@ export * from "./repositories/user.repository";
 export * from "./services/user.service";
 export * from "./services/auth.service";
 export * from "./services/aqi.service";
+export * from "./services/aqi-provider.service";
 export * from "./services/ai.service";
 export * from "./services/indoor.service";
 export * from "./services/plan.service";

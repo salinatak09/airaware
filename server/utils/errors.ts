@@ -75,3 +75,9 @@ export class DatabaseError extends AppError {
     super(message, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.DATABASE_ERROR);
   }
 }
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "External service unavailable") {
+    super(message, HTTP_STATUS.SERVICE_UNAVAILABLE, ERROR_CODES.SERVICE_UNAVAILABLE);
+  }
+}
