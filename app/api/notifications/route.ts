@@ -17,8 +17,8 @@ const readNotificationSchema = z.object({
  * GET /api/notifications
  * Retrieve active smog alerts, safe window advisories, and system notifications
  */
-export const GET = withApiHandler(async () => {
-  const notifications = await notificationService.getNotifications();
+export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
+  const notifications = await notificationService.getNotifications(user?.id);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return apiSuccess(
@@ -36,11 +36,11 @@ export const GET = withApiHandler(async () => {
  * POST /api/notifications
  * Mark notifications as read
  */
-export const POST = withApiHandler(async (req: NextRequest) => {
+export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   const body = await validateBody(req, readNotificationSchema);
 
   if (body.markAll) {
-    await notificationService.markAllAsRead();
+    await notificationService.markAllAsRead(user?.id);
     return apiSuccess({ success: true }, { message: "All notifications marked as read" });
   }
 

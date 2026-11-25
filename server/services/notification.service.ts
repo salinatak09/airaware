@@ -1,4 +1,6 @@
 import "server-only";
+import { connectToDatabase } from "@/server/db";
+import { Notification } from "@/models/Notification";
 
 export interface AirAwareNotification {
   id: string;
@@ -11,7 +13,7 @@ export interface AirAwareNotification {
 }
 
 export class NotificationService {
-  private static notifications: AirAwareNotification[] = [
+  private static fallbackNotifications: AirAwareNotification[] = [
     {
       id: "notif_1",
       type: "smog_alert",
@@ -41,19 +43,88 @@ export class NotificationService {
     },
   ];
 
-  async getNotifications(): Promise<AirAwareNotification[]> {
-    return [...NotificationService.notifications];
+  async getNotifications(userId?: string): Promise<AirAwareNotification[]> {
+    try {
+      await connectToDatabase();
+      const filter = userId ? { userId } : {};
+      const docs = await Notification.find(filter)
+        .sort({ isRead: 1, createdAt: -1 })
+        .limit(20)
+        .lean()
+        .exec();
+
+      if (docs && docs.length > 0) {
+        return docs.map((doc) => {
+          const typeMapping: Record<string, AirAwareNotification["type"]> = {
+            aqi_alert: "smog_alert",
+            mission_reminder: "window_recommendation",
+            streak_risk: "achievement",
+            achievement: "achievement",
+            safety_advisory: "smog_alert",
+          };
+
+          const createdTime = doc.createdAt ? new Date(doc.createdAt).getTime() : Date.now();
+          const minutesAgo = Math.max(1, Math.floor((Date.now() - createdTime) / 60000));
+          const timeLabel = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
+
+          return {
+            id: doc._id.toString(),
+            type: typeMapping[doc.type] || "smog_alert",
+            title: doc.title,
+            message: doc.message,
+            severity: doc.priority === "urgent" || doc.priority === "high" ? "alert" : doc.priority === "medium" ? "warning" : "info",
+            timestamp: timeLabel,
+            read: doc.isRead,
+          };
+        });
+      }
+    } catch {
+      // Fallback
+    }
+
+    return [...NotificationService.fallbackNotifications];
   }
 
   async markAsRead(id: string): Promise<AirAwareNotification | null> {
-    const item = NotificationService.notifications.find((n) => n.id === id);
+    try {
+      await connectToDatabase();
+      const doc = await Notification.findByIdAndUpdate(
+        id,
+        { isRead: true, readAt: new Date() },
+        { new: true }
+      ).lean();
+
+      if (doc) {
+        return {
+          id: doc._id.toString(),
+          type: "smog_alert",
+          title: doc.title,
+          message: doc.message,
+          severity: "info",
+          timestamp: "Just now",
+          read: true,
+        };
+      }
+    } catch {
+      // Fallback
+    }
+
+    const item = NotificationService.fallbackNotifications.find((n) => n.id === id);
     if (!item) return null;
     item.read = true;
     return { ...item };
   }
 
-  async markAllAsRead(): Promise<void> {
-    NotificationService.notifications.forEach((n) => (n.read = true));
+  async markAllAsRead(userId?: string): Promise<void> {
+    try {
+      await connectToDatabase();
+      const filter = userId ? { userId } : {};
+      await Notification.updateMany(filter, { isRead: true, readAt: new Date() });
+    } catch {
+      // Fallback
+    }
+
+    NotificationService.fallbackNotifications.forEach((n) => (n.read = true));
   }
 }
 

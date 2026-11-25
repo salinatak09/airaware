@@ -1,4 +1,7 @@
 import "server-only";
+import { connectToDatabase } from "@/server/db";
+import { GamificationProfile } from "@/models/GamificationProfile";
+import { UserAction } from "@/models/UserAction";
 
 export interface DailyMission {
   id: string;
@@ -65,11 +68,33 @@ export class ImpactService {
     ],
   };
 
-  async getImpactStats(): Promise<ImpactStats> {
+  async getImpactStats(userId?: string): Promise<ImpactStats> {
+    try {
+      await connectToDatabase();
+      const filter = userId ? { userId } : {};
+      const profile = await GamificationProfile.findOne(filter).lean().exec();
+
+      if (profile) {
+        const nextLevelXp = profile.level * 500;
+        return {
+          xp: profile.totalXp,
+          level: profile.level,
+          nextLevelXp,
+          streakDays: profile.streak.currentStreak,
+          cleanAirHoursProtected: 142 + profile.totalXp * 0.2,
+          masksWorn: 18 + Math.floor(profile.totalXp / 50),
+          purifierHoursRun: 96 + Math.floor(profile.totalXp / 30),
+          dailyMissions: ImpactService.userStats.dailyMissions,
+        };
+      }
+    } catch {
+      // Fallback
+    }
+
     return { ...ImpactService.userStats };
   }
 
-  async completeMission(missionId: string): Promise<ImpactStats> {
+  async completeMission(missionId: string, userId?: string): Promise<ImpactStats> {
     const mission = ImpactService.userStats.dailyMissions.find((m) => m.id === missionId);
     if (!mission) {
       throw new Error(`Mission ${missionId} not found`);
@@ -81,6 +106,30 @@ export class ImpactService {
       if (ImpactService.userStats.xp >= ImpactService.userStats.nextLevelXp) {
         ImpactService.userStats.level += 1;
         ImpactService.userStats.nextLevelXp += 500;
+      }
+
+      try {
+        await connectToDatabase();
+        if (userId) {
+          await GamificationProfile.findOneAndUpdate(
+            { userId },
+            {
+              $inc: { totalXp: mission.xpReward, completedMissionsCount: 1 },
+              $set: { "streak.lastActiveDate": new Date() },
+            },
+            { upsert: true }
+          );
+
+          await UserAction.create({
+            userId,
+            actionType: "quiz_completed",
+            xpEarned: mission.xpReward,
+            associatedMissionId: missionId,
+            metadata: { missionTitle: mission.title },
+          });
+        }
+      } catch {
+        // Fallback
       }
     }
 

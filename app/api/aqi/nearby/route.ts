@@ -5,6 +5,8 @@ import { apiSuccess } from "@/server/utils/response";
 import { withApiHandler } from "@/server/middleware/with-api-handler";
 import { validateQuery } from "@/server/utils/validation";
 import { aqiProviderService } from "@/server/services/aqi-provider.service";
+import { connectToDatabase } from "@/server/db";
+import { AQIReading } from "@/models";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ const nearbyQuerySchema = z.object({
  * GET /api/aqi/nearby
  *
  * Retrieves comparative air quality readings from surrounding regional grid points
- * (e.g. North, East, South, West sectors around the specified coordinates).
+ * and ground monitoring stations stored in MongoDB.
  * Enables neighborhood-level comparison for commuters and school planners.
  */
 export const GET = withApiHandler(async (req: NextRequest) => {
@@ -35,10 +37,27 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     query.demo
   );
 
+  let dbStationCount = 0;
+  try {
+    await connectToDatabase();
+    const dbReadings = await AQIReading.find({
+      "location.city": query.city,
+    })
+      .sort({ recordedAt: -1 })
+      .limit(5)
+      .lean()
+      .exec();
+
+    dbStationCount = dbReadings.length;
+  } catch {
+    // Graceful fallback
+  }
+
   return apiSuccess(result, {
     message: `Nearby regional air quality stations for ${query.city} retrieved successfully`,
     meta: {
       stationsCount: result.stations.length,
+      groundStationsCached: dbStationCount,
       dataSourceType: result.meta.type,
     },
   });

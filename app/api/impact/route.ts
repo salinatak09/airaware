@@ -16,8 +16,8 @@ const completeMissionSchema = z.object({
  * GET /api/impact
  * Retrieve user XP, streak, health impact metrics, and active daily missions
  */
-export const GET = withApiHandler(async () => {
-  const stats = await impactService.getImpactStats();
+export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
+  const stats = await impactService.getImpactStats(user?.id);
   return apiSuccess(stats, {
     message: "Impact and gamification statistics retrieved",
   });
@@ -27,9 +27,9 @@ export const GET = withApiHandler(async () => {
  * POST /api/impact
  * Mark a daily clean air mission as completed to claim XP
  */
-export const POST = withApiHandler(async (req: NextRequest) => {
+export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   const body = await validateBody(req, completeMissionSchema);
-  const updatedStats = await impactService.completeMission(body.missionId);
+  const updatedStats = await impactService.completeMission(body.missionId, user?.id);
 
   return apiSuccess(updatedStats, {
     message: "Mission completed! XP awarded.",

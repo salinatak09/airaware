@@ -5,6 +5,8 @@ import { apiSuccess, apiCreated } from "@/server/utils/response";
 import { withApiHandler } from "@/server/middleware/with-api-handler";
 import { validateBody } from "@/server/utils/validation";
 import { planService } from "@/server/services/plan.service";
+import { connectToDatabase } from "@/server/db";
+import { DailyPlan, UserAction } from "@/models";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +28,39 @@ const addActivitySchema = z.object({
 
 /**
  * GET /api/plans
- * Retrieve daily schedule and safest outdoor windows
+ * Retrieve daily schedule, missions, and safest outdoor windows from MongoDB with fallback
  */
-export const GET = withApiHandler(async () => {
+export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  try {
+    await connectToDatabase();
+    const filter = user?.id ? { userId: user.id, date: todayStr } : { date: todayStr };
+    const dbPlan = await DailyPlan.findOne(filter).lean().exec();
+
+    if (dbPlan) {
+      return apiSuccess(
+        {
+          date: dbPlan.date,
+          overallSuitability: dbPlan.aqiContext.expectedAqi > 200 ? "caution" : "good",
+          safestOutdoorWindow: dbPlan.aqiContext.safestWindow || {
+            start: "12:30 PM",
+            end: "03:30 PM",
+            reason: "Diurnal atmospheric boundary layer expansion",
+          },
+          missions: dbPlan.missions,
+          recommendations: dbPlan.recommendations,
+          activities: await planService.getTodayPlan().then((p) => p.activities),
+        },
+        {
+          message: "Today's air quality activity plan retrieved from database",
+        }
+      );
+    }
+  } catch {
+    // Fallback
+  }
+
   const plan = await planService.getTodayPlan();
   return apiSuccess(plan, {
     message: "Today's air quality activity plan retrieved",
@@ -37,9 +69,9 @@ export const GET = withApiHandler(async () => {
 
 /**
  * POST /api/plans
- * Add a new scheduled activity to today's plan
+ * Add a new scheduled activity to today's plan and log UserAction
  */
-export const POST = withApiHandler(async (req: NextRequest) => {
+export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   const body = await validateBody(req, addActivitySchema);
   const activity = await planService.addActivity({
     title: body.title,
@@ -50,6 +82,24 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     recommendedMask: body.recommendedMask ?? true,
     notes: body.notes ?? "",
   });
+
+  // Log user action if user is authenticated
+  if (user?.id) {
+    try {
+      await connectToDatabase();
+      await UserAction.create({
+        userId: user.id,
+        actionType: "route_adjusted",
+        xpEarned: 15,
+        metadata: {
+          activityTitle: activity.title,
+          scheduledTime: activity.scheduledTime,
+        },
+      });
+    } catch {
+      // Non-blocking action logging
+    }
+  }
 
   return apiCreated(activity, {
     message: "Activity added to daily plan",

@@ -5,7 +5,7 @@ export * from "./config/constants";
 export * from "./config/env";
 
 // Database
-export * from "./api/db/connection";
+export * from "./db";
 
 // Utils
 export * from "./utils/errors";

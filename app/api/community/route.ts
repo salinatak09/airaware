@@ -36,7 +36,7 @@ export const GET = withApiHandler(async () => {
  * POST /api/community
  * Submit a local pollution hazard report
  */
-export const POST = withApiHandler(async (req: NextRequest) => {
+export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   const body = await validateBody(req, reportHazardSchema);
   const created = await communityService.createReport({
     authorName: body.authorName,
@@ -44,6 +44,7 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     hazardType: body.hazardType,
     description: body.description,
     severity: body.severity ?? "moderate",
+    userId: user?.id,
   });
 
   return apiCreated(created, {
