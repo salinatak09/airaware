@@ -55,6 +55,7 @@ export interface IUserData {
     lastActiveDate?: Date;
   };
   preferences: IUserPreferences;
+  onboardingComplete?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -165,6 +166,11 @@ const UserSchema = new Schema<IUserDocument>(
         enum: ["CPCB_NAQI", "US_EPA"],
         default: "CPCB_NAQI",
       },
+    },
+    onboardingComplete: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {

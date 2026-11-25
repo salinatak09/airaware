@@ -70,8 +70,9 @@ export default function OnboardingPage() {
     router.push("/");
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsFinishing(true);
+
     try {
       localStorage.setItem(COMPLETED_KEY, "true");
       localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
@@ -88,12 +89,88 @@ export default function OnboardingPage() {
           isHome: true,
         });
       }
-    } catch {}
+
+      // Map frontend onboarding state to backend complete payload
+      const commuteMapping: Record<string, "car" | "metro" | "bus" | "two_wheeler" | "walking" | "bicycle" | "mixed"> = {
+        metro_train: "metro",
+        bus: "bus",
+        car_ac: "car",
+        bike_two_wheeler: "two_wheeler",
+        walking: "walking",
+      };
+
+      const homeMapping: Record<string, "apartment" | "independent_house" | "villa" | "other"> = {
+        apartment_highrise: "apartment",
+        apartment_lowrise: "apartment",
+        independent_house: "independent_house",
+        townhouse: "villa",
+      };
+
+      const payload = {
+        location: {
+          city: formData.location.city || "New Delhi",
+          area: formData.location.area || "Connaught Place",
+          state: "Delhi",
+          country: "India",
+          latitude: formData.location.coordinates?.latitude ?? 28.6139,
+          longitude: formData.location.coordinates?.longitude ?? 77.209,
+        },
+        household: {
+          adults: Math.max(1, formData.household.adults || 1),
+          children: formData.household.children || 0,
+          elderly: formData.household.seniors || 0,
+          hasAsthma: formData.household.respiratorySensitivities.includes("asthma"),
+          hasAllergies: formData.household.respiratorySensitivities.length > 0,
+          isPregnant: Boolean(formData.household.pregnancySensitivity),
+          hasInfant: false,
+          notes: formData.household.respiratorySensitivities.join(", ") || "",
+        },
+        lifestyle: {
+          workSchedule: formData.lifestyle.workSchedule === "remote_flexible" ? ("work_from_home" as const) : ("hybrid" as const),
+          commuteType: commuteMapping[formData.lifestyle.commuteType] || "metro",
+          commuteDurationMinutes: 30,
+          travelWindow: "morning_rush" as const,
+          outdoorActivities: formData.lifestyle.outdoorActivities.length > 1 ? ("daily" as const) : ("occasional" as const),
+          exerciseHabits: formData.lifestyle.exerciseHabits === "outdoor_morning" ? ("outdoor_morning" as const) : ("indoor_gym" as const),
+        },
+        homeEnvironment: {
+          homeType: homeMapping[formData.homeEnvironment.homeType] || "apartment",
+          floorLevel: 2,
+          ventilationType: formData.homeEnvironment.ventilationType === "central_hvac" ? ("central_ac" as const) : ("natural" as const),
+          cookingFuel: formData.homeEnvironment.cookingFuel === "induction_electric" ? ("induction_electric" as const) : ("piped_gas" as const),
+          hasAirPurifier: formData.homeEnvironment.purifierAvailability !== "none",
+          purifierCount: formData.homeEnvironment.purifierAvailability === "all_rooms" ? 3 : formData.homeEnvironment.purifierAvailability === "single_unit" ? 1 : 0,
+          roomsWithPurifiers: formData.homeEnvironment.purifierAvailability !== "none" ? ["living_room", "bedroom"] : [],
+          purifierType: formData.homeEnvironment.purifierAvailability !== "none" ? ("hepa" as const) : ("none" as const),
+          hasBalconyOrGarden: true,
+          budgetRange: "moderate" as const,
+        },
+        preferences: {
+          notificationsEnabled: formData.preferences.notifications.severeSpikesAlert ?? true,
+          aqiThresholdAlert: 150,
+          temperatureUnit: formData.preferences.temperatureUnit || "celsius",
+          aqiStandard: "CPCB_NAQI" as const,
+        },
+      };
+
+      // Call the backend endpoint to persist onboarding profile
+      const res = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        console.warn("Server onboarding submission returned status:", res.status);
+      }
+    } catch (e) {
+      console.warn("Failed to persist onboarding to backend:", e);
+    }
 
     toast({
       type: "success",
       title: "Setup Complete! 🎉",
-      message: "Your family air shield is now active. Welcome to AirAware!",
+      message: "Your family air shield is now active (+100 XP awarded). Welcome to AirAware!",
     });
 
     setTimeout(() => {

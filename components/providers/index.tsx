@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 import { ToastProvider } from "@/components/ui/toast";
 import { ShellProvider } from "@/components/layout/shell-context";
 
@@ -20,10 +21,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ShellProvider>
-        <ToastProvider>{children}</ToastProvider>
-      </ShellProvider>
-    </QueryClientProvider>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <ShellProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ShellProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

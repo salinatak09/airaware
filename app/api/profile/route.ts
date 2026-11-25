@@ -4,76 +4,277 @@ import { z } from "zod";
 import { apiSuccess } from "@/server/utils/response";
 import { withApiHandler } from "@/server/middleware/with-api-handler";
 import { validateBody } from "@/server/utils/validation";
-import { userService } from "@/server/services/user.service";
-import { IUserData } from "@/models/User";
+import { connectToDatabase } from "@/server/db";
+import { User, HouseholdProfile, GamificationProfile } from "@/models";
+import { NotFoundError } from "@/server/utils/errors";
 
 export const dynamic = "force-dynamic";
 
-const familyMemberSchema = z.object({
-  name: z.string().min(1),
-  ageGroup: z.enum(["infant", "child", "teen", "adult", "senior"]),
-  healthConditions: z.array(z.string()).default([]),
-  vulnerabilityLevel: z.enum(["low", "medium", "high", "critical"]).default("low"),
-  notes: z.string().max(250).optional(),
-});
-
-const updateProfileSchema = z.object({
+const profilePayloadSchema = z.object({
   name: z.string().min(2).optional(),
-  homeLocation: z
+  avatar: z.string().optional(),
+  location: z
     .object({
-      city: z.string(),
-      country: z.string(),
-      latitude: z.number(),
-      longitude: z.number(),
+      city: z.string().optional(),
+      area: z.string().optional(),
+      state: z.string().optional(),
+      country: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      timezone: z.string().optional(),
     })
     .optional(),
-  familyMembers: z.array(familyMemberSchema).optional(),
   preferences: z
     .object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      language: z.string().optional(),
       notificationsEnabled: z.boolean().optional(),
       aqiThresholdAlert: z.number().optional(),
       temperatureUnit: z.enum(["celsius", "fahrenheit"]).optional(),
+      aqiStandard: z.enum(["CPCB_NAQI", "US_EPA"]).optional(),
+    })
+    .optional(),
+  familyMembers: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        ageGroup: z.enum(["infant", "child", "teen", "adult", "senior"]),
+        healthConditions: z.array(z.string()).default([]),
+        vulnerabilityLevel: z.enum(["low", "medium", "high", "critical"]).default("low"),
+        notes: z.string().max(250).optional(),
+      })
+    )
+    .optional(),
+  householdProfile: z
+    .object({
+      householdSize: z
+        .object({
+          adults: z.number().min(1).default(1),
+          children: z.number().min(0).default(0),
+          elderly: z.number().min(0).default(0),
+          total: z.number().min(1).optional(),
+        })
+        .optional(),
+      sensitiveGroupPreferences: z
+        .object({
+          hasRespiratorySensitivity: z.boolean().default(false),
+          hasCardiovascularSensitivity: z.boolean().default(false),
+          isPregnant: z.boolean().default(false),
+          hasInfant: z.boolean().default(false),
+          notes: z.string().max(200).optional(),
+        })
+        .optional(),
+      lifestyle: z
+        .object({
+          workSchedule: z.enum(["fixed_office", "hybrid", "work_from_home", "outdoor_work", "student", "retired"]).optional(),
+          exerciseHabits: z.enum(["outdoor_morning", "outdoor_evening", "indoor_gym", "none", "intermittent"]).optional(),
+          outdoorActivityFrequency: z.enum(["daily", "weekends_only", "occasional", "rare"]).optional(),
+        })
+        .optional(),
+      commute: z
+        .object({
+          commuteType: z.enum(["car", "metro", "bus", "two_wheeler", "walking", "bicycle", "mixed"]).optional(),
+          durationMinutes: z.number().min(0).max(240).optional(),
+          travelWindow: z.enum(["early_morning", "morning_rush", "midday", "evening_rush", "night"]).optional(),
+        })
+        .optional(),
+      homeEnvironment: z
+        .object({
+          homeType: z.enum(["apartment", "independent_house", "villa", "other"]).optional(),
+          floorLevel: z.number().optional(),
+          ventilationType: z.enum(["natural", "central_ac", "split_ac", "mixed"]).optional(),
+          cookingFuel: z.enum(["lpg", "induction_electric", "piped_gas", "biomass"]).optional(),
+          hasBalconyOrGarden: z.boolean().optional(),
+        })
+        .optional(),
+      purifierAvailability: z
+        .object({
+          hasPurifier: z.boolean().optional(),
+          purifierCount: z.number().min(0).optional(),
+          roomsWithPurifiers: z.array(z.string()).optional(),
+          purifierType: z.enum(["hepa", "carbon_hepa", "diy", "none"]).optional(),
+          lastFilterChangeDate: z.string().or(z.date()).optional(),
+        })
+        .optional(),
+      budgetPreferences: z
+        .object({
+          budgetRange: z.enum(["minimal", "moderate", "comprehensive"]).optional(),
+          improvementPriorities: z.array(z.string()).optional(),
+        })
+        .optional(),
     })
     .optional(),
 });
 
 /**
  * GET /api/profile
- * Get authenticated user's profile and family details
+ * Retrieves full user account, household profile, and gamification status.
  */
 export const GET = withApiHandler(
   async (_req: NextRequest, _ctx, user) => {
-    const profile = await userService.getUserById(user!.id);
-    return apiSuccess(profile, {
-      message: "Profile retrieved successfully",
-    });
+    await connectToDatabase();
+
+    const [userDoc, householdDoc, gamificationDoc] = await Promise.all([
+      User.findById(user!.id).lean().exec(),
+      HouseholdProfile.findOne({ userId: user!.id }).lean().exec(),
+      GamificationProfile.findOne({ userId: user!.id }).lean().exec(),
+    ]);
+
+    if (!userDoc) {
+      throw new NotFoundError("User profile not found.");
+    }
+
+    return apiSuccess(
+      {
+        user: {
+          id: userDoc._id.toString(),
+          name: userDoc.name,
+          email: userDoc.email,
+          avatar: userDoc.avatar,
+          location: userDoc.location || userDoc.homeLocation,
+          preferences: userDoc.preferences,
+          familyMembers: userDoc.familyMembers || [],
+          onboardingComplete: userDoc.onboardingComplete || false,
+        },
+        householdProfile: householdDoc || null,
+        gamification: gamificationDoc
+          ? {
+              totalXp: gamificationDoc.totalXp,
+              level: gamificationDoc.level,
+              streak: gamificationDoc.streak,
+              badges: gamificationDoc.badges,
+              achievements: gamificationDoc.achievements,
+            }
+          : null,
+      },
+      {
+        message: "Comprehensive profile retrieved successfully",
+      }
+    );
+  },
+  { requireAuth: true }
+);
+
+/**
+ * PUT /api/profile
+ * Full update for user profile and household environment.
+ */
+export const PUT = withApiHandler(
+  async (req: NextRequest, _ctx, user) => {
+    const body = await validateBody(req, profilePayloadSchema);
+
+    await connectToDatabase();
+
+    // 1. Update User Document
+    const userUpdates: Record<string, unknown> = {};
+    if (body.name) userUpdates.name = body.name;
+    if (body.avatar) userUpdates.avatar = body.avatar;
+    if (body.familyMembers) userUpdates.familyMembers = body.familyMembers;
+
+    if (body.location) {
+      if (body.location.city) userUpdates["location.city"] = body.location.city;
+      if (body.location.area) userUpdates["location.area"] = body.location.area;
+      if (body.location.state) userUpdates["location.state"] = body.location.state;
+      if (body.location.country) userUpdates["location.country"] = body.location.country;
+      if (body.location.timezone) userUpdates["location.timezone"] = body.location.timezone;
+      if (body.location.latitude !== undefined && body.location.longitude !== undefined) {
+        userUpdates["location.latitude"] = body.location.latitude;
+        userUpdates["location.longitude"] = body.location.longitude;
+        userUpdates["location.coordinates"] = {
+          type: "Point",
+          coordinates: [body.location.longitude, body.location.latitude],
+        };
+      }
+    }
+
+    if (body.preferences) {
+      if (body.preferences.theme) userUpdates["preferences.theme"] = body.preferences.theme;
+      if (body.preferences.language) userUpdates["preferences.language"] = body.preferences.language;
+      if (body.preferences.notificationsEnabled !== undefined) {
+        userUpdates["preferences.notificationsEnabled"] = body.preferences.notificationsEnabled;
+      }
+      if (body.preferences.aqiThresholdAlert !== undefined) {
+        userUpdates["preferences.aqiThresholdAlert"] = body.preferences.aqiThresholdAlert;
+        userUpdates["preferences.aqiAlertThreshold"] = body.preferences.aqiThresholdAlert;
+      }
+      if (body.preferences.temperatureUnit) {
+        userUpdates["preferences.temperatureUnit"] = body.preferences.temperatureUnit;
+      }
+      if (body.preferences.aqiStandard) {
+        userUpdates["preferences.aqiStandard"] = body.preferences.aqiStandard;
+      }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user!.id,
+      { $set: userUpdates },
+      { new: true }
+    ).lean().exec();
+
+    if (!updatedUser) {
+      throw new NotFoundError("User not found.");
+    }
+
+    // 2. Update or Upsert HouseholdProfile Document
+    let updatedHousehold = null;
+    if (body.householdProfile) {
+      const hp = body.householdProfile;
+      const hpUpdates: Record<string, unknown> = {};
+
+      if (hp.householdSize) {
+        const adults = hp.householdSize.adults ?? 1;
+        const children = hp.householdSize.children ?? 0;
+        const elderly = hp.householdSize.elderly ?? 0;
+        hpUpdates.householdSize = {
+          adults,
+          children,
+          elderly,
+          total: hp.householdSize.total ?? adults + children + elderly,
+        };
+      }
+
+      if (hp.sensitiveGroupPreferences) {
+        hpUpdates.sensitiveGroupPreferences = hp.sensitiveGroupPreferences;
+      }
+      if (hp.lifestyle) hpUpdates.lifestyle = hp.lifestyle;
+      if (hp.commute) hpUpdates.commute = hp.commute;
+      if (hp.homeEnvironment) hpUpdates.homeEnvironment = hp.homeEnvironment;
+      if (hp.purifierAvailability) hpUpdates.purifierAvailability = hp.purifierAvailability;
+      if (hp.budgetPreferences) hpUpdates.budgetPreferences = hp.budgetPreferences;
+
+      updatedHousehold = await HouseholdProfile.findOneAndUpdate(
+        { userId: user!.id },
+        { $set: hpUpdates, $setOnInsert: { userId: user!.id } },
+        { new: true, upsert: true }
+      ).lean().exec();
+    } else {
+      updatedHousehold = await HouseholdProfile.findOne({ userId: user!.id }).lean().exec();
+    }
+
+    return apiSuccess(
+      {
+        user: {
+          id: updatedUser._id.toString(),
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatar: updatedUser.avatar,
+          location: updatedUser.location,
+          preferences: updatedUser.preferences,
+          familyMembers: updatedUser.familyMembers,
+          onboardingComplete: updatedUser.onboardingComplete,
+        },
+        householdProfile: updatedHousehold,
+      },
+      {
+        message: "Profile and household environment updated successfully",
+      }
+    );
   },
   { requireAuth: true }
 );
 
 /**
  * PATCH /api/profile
- * Update user preferences, location, or family members
+ * Alias for PUT /api/profile
  */
-export const PATCH = withApiHandler(
-  async (req: NextRequest, _ctx, user) => {
-    const body = await validateBody(req, updateProfileSchema);
-    const updated = await userService.updateProfile(user!.id, {
-      name: body.name,
-      homeLocation: body.homeLocation,
-      familyMembers: body.familyMembers?.map((m) => ({
-        name: m.name,
-        ageGroup: m.ageGroup,
-        healthConditions: m.healthConditions ?? [],
-        vulnerabilityLevel: m.vulnerabilityLevel ?? "low",
-        notes: m.notes,
-      })),
-      preferences: body.preferences as IUserData["preferences"] | undefined,
-    });
-
-    return apiSuccess(updated, {
-      message: "Profile updated successfully",
-    });
-  },
-  { requireAuth: true }
-);
+export const PATCH = PUT;
