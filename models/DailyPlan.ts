@@ -8,12 +8,18 @@ export interface IPlanWindow {
 
 export interface IPlanMission {
   missionId: string;
+  time: string;
   title: string;
   description: string;
+  whyItMatters: string;
+  priority: "high" | "medium" | "low";
+  estimatedDuration: string;
   category: "protection" | "indoor" | "habit" | "community" | "transit";
   xpReward: number;
   completed: boolean;
   completedAt?: Date;
+  skipped?: boolean;
+  rescheduledTime?: string;
 }
 
 export interface IPlanRecommendations {
@@ -83,8 +89,16 @@ const DailyPlanSchema = new Schema<IDailyPlanDocument>(
     missions: [
       {
         missionId: { type: String, required: true },
+        time: { type: String, default: "08:00 AM" },
         title: { type: String, required: true },
         description: { type: String, required: true },
+        whyItMatters: { type: String, default: "Protects respiratory tract during peak pollution hours" },
+        priority: {
+          type: String,
+          enum: ["high", "medium", "low"],
+          default: "medium",
+        },
+        estimatedDuration: { type: String, default: "15 mins" },
         category: {
           type: String,
           enum: ["protection", "indoor", "habit", "community", "transit"],
@@ -93,6 +107,8 @@ const DailyPlanSchema = new Schema<IDailyPlanDocument>(
         xpReward: { type: Number, default: 20 },
         completed: { type: Boolean, default: false },
         completedAt: { type: Date },
+        skipped: { type: Boolean, default: false },
+        rescheduledTime: { type: String },
       },
     ],
     recommendations: {

@@ -1,6 +1,6 @@
 import "server-only";
 import mongoose from "mongoose";
-import { serverConfig } from "@/server/config/env";
+import { serverConfig } from "../../config/env.ts";
 
 interface MongooseCache {
   conn: typeof mongoose | null;

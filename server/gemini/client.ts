@@ -1,6 +1,6 @@
 import "server-only";
 import { GoogleGenAI, type GenerateContentConfig } from "@google/genai";
-import { env } from "@/lib/env";
+import { serverConfig } from "../config/env.ts";
 
 let geminiClientInstance: GoogleGenAI | null = null;
 
@@ -9,11 +9,12 @@ let geminiClientInstance: GoogleGenAI | null = null;
  */
 export function getGeminiClient(): GoogleGenAI {
   if (!geminiClientInstance) {
-    if (!env.GEMINI_API_KEY) {
+    const key = serverConfig.GEMINI_API_KEY;
+    if (!key) {
       throw new Error("GEMINI_API_KEY is not configured on the server.");
     }
     geminiClientInstance = new GoogleGenAI({
-      apiKey: env.GEMINI_API_KEY
+      apiKey: key,
     });
   }
   return geminiClientInstance;

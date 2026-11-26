@@ -136,21 +136,41 @@ export const DailyPlanOutputSchema = z.object({
   summary: z.string(),
   riskLevel: z.enum(["low", "moderate", "high", "severe", "critical"]),
   keyAdvisories: z.array(z.string()),
-  timeWindows: z.array(
-    z.object({
-      time: z.string(),
-      activity: z.string(),
-      safetyLevel: z.enum(["recommended", "caution", "avoid"]),
-      rationale: z.string(),
+  safestWindow: z
+    .object({
+      start: z.string(),
+      end: z.string(),
+      reason: z.string(),
     })
-  ),
+    .optional(),
+  peakSmogWindow: z
+    .object({
+      start: z.string(),
+      end: z.string(),
+      reason: z.string(),
+    })
+    .optional(),
+  timeWindows: z
+    .array(
+      z.object({
+        time: z.string(),
+        activity: z.string(),
+        safetyLevel: z.enum(["recommended", "caution", "avoid"]),
+        rationale: z.string(),
+      })
+    )
+    .default([]),
   dailyMissions: z.array(
     z.object({
       id: z.string(),
+      time: z.string().default("08:00 AM"),
       title: z.string(),
       description: z.string(),
-      xp: z.number(),
-      category: z.enum(["indoor", "outdoor", "habit", "protection"]),
+      whyItMatters: z.string().default("Reduces particulate exposure during sensitive diurnal hours"),
+      priority: z.enum(["high", "medium", "low"]).default("medium"),
+      estimatedDuration: z.string().default("15 mins"),
+      xp: z.number().default(20),
+      category: z.enum(["protection", "indoor", "habit", "community", "transit"]).default("protection"),
     })
   ),
   disclaimer: z.string(),

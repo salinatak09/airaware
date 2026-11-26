@@ -5,6 +5,6 @@ export {
   getDatabaseStatus,
   type DatabaseStatus,
   type DbState,
-} from "../api/db/connection";
+} from "../api/db/connection.ts";
 
-export * from "@/models";
+export * from "../../models/index.ts";

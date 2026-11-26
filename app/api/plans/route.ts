@@ -50,7 +50,7 @@ export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
           },
           missions: dbPlan.missions,
           recommendations: dbPlan.recommendations,
-          activities: await planService.getTodayPlan().then((p) => p.activities),
+          activities: dbPlan.missions,
         },
         {
           message: "Today's air quality activity plan retrieved from database",

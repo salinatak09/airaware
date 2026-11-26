@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { serverConfig } from "../../config/env.ts";
 import { safetyEngine } from "../safety/index.ts";
 import type { SafetyAdvisoryResult } from "../safety/types.ts";
-import { getGeminiClient, getGeminiModel } from "@/server/gemini/client.ts";
+import { getGeminiClient, getGeminiModel } from "../../gemini/client.ts";
 import type {
   AiContextInput,
   DailyPlanOutput,
@@ -65,12 +65,24 @@ export class GeminiService {
   "summary": string (concise 1-2 sentence overview for the day),
   "riskLevel": "low" | "moderate" | "high" | "severe" | "critical",
   "keyAdvisories": string[] (3-4 bullet points),
+  "safestWindow": { "start": string, "end": string, "reason": string },
+  "peakSmogWindow": { "start": string, "end": string, "reason": string },
   "timeWindows": [
     { "time": string, "activity": string, "safetyLevel": "recommended" | "caution" | "avoid", "rationale": string }
   ] (4-5 key timeslots throughout the day),
   "dailyMissions": [
-    { "id": string, "title": string, "description": string, "xp": number, "category": "indoor" | "outdoor" | "habit" | "protection" }
-  ] (3 actionable gamified missions),
+    {
+      "id": string (e.g. "m_1", "m_2"),
+      "time": string (e.g. "07:00 AM", "08:00 AM", "12:00 PM", "04:00 PM", "08:00 PM"),
+      "title": string (punchy, action-oriented),
+      "description": string (clear instruction for user),
+      "whyItMatters": string (scientific/health explanation for why this action matters),
+      "priority": "high" | "medium" | "low",
+      "estimatedDuration": string (e.g. "5 mins", "15 mins", "30 mins"),
+      "xp": number (15 to 30),
+      "category": "protection" | "indoor" | "habit" | "community" | "transit"
+    }
+  ] (5-6 timeline missions mapped across the day),
   "disclaimer": "${OFFICIAL_DISCLAIMER}"
 }`
         );
@@ -427,10 +439,8 @@ ${taskSchemaInstructions}`;
         responseMimeType: "application/json",
       },
     }).then((res) => {
-      console.log(res);
       return res.text ?? ''
     });
-    console.log(callPromise);
 
     const timeoutPromise = new Promise<string>((_, reject) => {
       setTimeout(() => reject(new Error(`Gemini request timed out after ${timeoutMs}ms`)), timeoutMs);
@@ -549,6 +559,16 @@ ${taskSchemaInstructions}`;
         ...safety.recommendations.outdoorActivity.slice(0, 2),
         ...safety.recommendations.indoorEnvironment.slice(0, 2),
       ],
+      safestWindow: {
+        start: "01:00 PM",
+        end: "03:30 PM",
+        reason: "Solar thermal boundary layer rises, dispersing ground-level particulate smog.",
+      },
+      peakSmogWindow: {
+        start: "07:00 AM",
+        end: "09:30 AM",
+        reason: "Cold morning ground inversion traps dense vehicular and industrial exhaust.",
+      },
       timeWindows: [
         {
           time: "07:00 AM – 09:30 AM",
@@ -577,27 +597,65 @@ ${taskSchemaInstructions}`;
       ],
       dailyMissions: [
         {
-          id: "m_mask",
-          title: "Airtight Mask Check",
-          description: `Verify proper seal of your ${safety.restrictions.maskTypeRecommended} mask before leaving home.`,
-          xp: 25,
-          category: "protection",
+          id: "m_check",
+          time: "07:00 AM",
+          title: "Check today's air quality",
+          description: `Review live AQI (${ctx.currentAqi}) and PM2.5 concentrations before opening doors or leaving home.`,
+          whyItMatters: "Early morning particulate awareness prevents accidental heavy inhalation during inversion peaks.",
+          priority: "high",
+          estimatedDuration: "2 mins",
+          xp: 15,
+          category: "habit",
         },
         {
-          id: "m_mopping",
-          title: "Wet Mop Living Spaces",
-          description: "Wet mop floors to capture settled micro-dust without kicking particles into the breathing zone.",
+          id: "m_commute",
+          time: "08:00 AM",
+          title: "Choose a cleaner commute",
+          description: safety.restrictions.maskRequired
+            ? `Equip an airtight ${safety.restrictions.maskTypeRecommended} mask and use metro or car with AC recirculation mode.`
+            : "Opt for closed public transit and maintain facial barrier protection.",
+          whyItMatters: "Traffic corridors have 4-5x higher particulate concentrations than residential areas.",
+          priority: "high",
+          estimatedDuration: "25 mins",
+          xp: 25,
+          category: "transit",
+        },
+        {
+          id: "m_windows",
+          time: "12:00 PM",
+          title: "Keep windows closed during pollution peak",
+          description: safety.restrictions.windowVentilationAllowed
+            ? "Inspect outdoor haze; if ventilating, limit to a 15-minute cross-breeze between 1 PM and 2 PM only."
+            : "Keep windows firmly sealed and place damp towels at door thresholds to stop infiltration.",
+          whyItMatters: "Prevents microscopic PM2.5 from settling into living room rugs and bedding.",
+          priority: "medium",
+          estimatedDuration: "5 mins",
           xp: 20,
           category: "indoor",
         },
         {
-          id: "m_window",
-          title: "Diurnal Window Management",
-          description: safety.restrictions.windowVentilationAllowed
-            ? "Open cross-ventilation for 20 minutes between 1:00 PM and 3:00 PM only."
-            : "Keep windows firmly closed and sealed throughout the day.",
-          xp: 15,
-          category: "habit",
+          id: "m_exercise",
+          time: "04:00 PM",
+          title: "Indoor activity instead of outdoor exercise",
+          description: safety.restrictions.outdoorSportsRestricted
+            ? "Outdoor aerobic workouts are strictly restricted today. Substitute with home yoga, pilates, or light treadmill."
+            : "Stick to light outdoor movement or workout in a HEPA-filtered indoor space.",
+          whyItMatters: "Heavy aerobic breathing increases lung particulate deposition rate by up to 10-fold.",
+          priority: "high",
+          estimatedDuration: "30 mins",
+          xp: 30,
+          category: "protection",
+        },
+        {
+          id: "m_ventilate",
+          time: "08:00 PM",
+          title: "Ventilate if outdoor AQI improves",
+          description: "Check evening station monitor. If ambient air remains poor, keep living quarters sealed and activate HEPA filtration.",
+          whyItMatters: "Evening temperature drops trigger ground-level smoke entrapment.",
+          priority: "medium",
+          estimatedDuration: "5 mins",
+          xp: 20,
+          category: "indoor",
         },
       ],
       disclaimer: OFFICIAL_DISCLAIMER,
