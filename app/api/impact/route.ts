@@ -8,30 +8,38 @@ import { impactService } from "@/server/services/impact.service";
 
 export const dynamic = "force-dynamic";
 
-const completeMissionSchema = z.object({
-  missionId: z.string().min(1),
+const logActionSchema = z.object({
+  actionType: z.string().default("air_check"),
+  missionId: z.string().optional(),
+  customTitle: z.string().optional(),
 });
 
 /**
  * GET /api/impact
- * Retrieve user XP, streak, health impact metrics, and active daily missions
+ * Retrieve user XP dashboard, level progression, daily streak, weekly activity chart,
+ * badges, achievements, household challenges, and honest behavioral impact metrics.
  */
 export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
-  const stats = await impactService.getImpactStats(user?.id);
-  return apiSuccess(stats, {
+  const data = await impactService.getGamificationOverview(user?.id);
+  return apiSuccess(data, {
     message: "Impact and gamification statistics retrieved",
   });
-});
+},{requireAuth: true});
 
 /**
  * POST /api/impact
- * Mark a daily clean air mission as completed to claim XP
+ * Log a verified clean air action / complete mission to earn XP (with anti-exploit guard)
  */
 export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
-  const body = await validateBody(req, completeMissionSchema);
-  const updatedStats = await impactService.completeMission(body.missionId, user?.id);
+  const body = await validateBody(req, logActionSchema);
+  const result = await impactService.logUserAction(
+    user?.id,
+    body.actionType,
+    body.missionId,
+    body.customTitle
+  );
 
-  return apiSuccess(updatedStats, {
-    message: "Mission completed! XP awarded.",
+  return apiSuccess(result, {
+    message: result.message,
   });
-});
+}, {requireAuth: true});
