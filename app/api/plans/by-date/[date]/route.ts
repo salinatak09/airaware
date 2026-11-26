@@ -14,7 +14,7 @@ interface RouteContext {
 }
 
 /**
- * GET /api/plans/[date]
+ * GET /api/plans/by-date/[date]
  * Retrieves the daily air quality plan for a specific date (YYYY-MM-DD).
  */
 export const GET = withApiHandler<RouteContext>(async (_req: NextRequest, ctx, user) => {
