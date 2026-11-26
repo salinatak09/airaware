@@ -1,212 +1,489 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { AppShell } from "@/components/layout/app-shell";
-import { useShell } from "@/components/layout/shell-context";
 import {
   Compass,
-  MapPin,
-  Trees,
+  Search,
+  List,
+  Map as MapIcon,
+  ShieldCheck,
+  Radio,
+  AlertTriangle,
   Navigation,
+  ChevronRight,
+  Loader2,
+  Clock,
+  Info,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PageTitle, SectionTitle, Subtitle } from "@/components/ui/typography";
-import { getAqiTheme } from "@/lib/colors";
+import { PageTitle, Subtitle } from "@/components/ui/typography";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import { StationDetailsPanel } from "@/components/map/station-details-panel";
+import { NearbyComparisonSection } from "@/components/map/nearby-comparison-card";
+import type { ExploreMapItem, ExploreMapResponse } from "@/server/services/explore.service";
 
-interface CleanSanctuary {
-  id: string;
-  name: string;
-  distance: string;
-  type: "Park" | "Indoor Garden" | "Library Sanctuary";
-  currentAqi: number;
-  perks: string;
-}
+// Dynamically import Leaflet map component with ssr: false to prevent window errors during SSR
+const ExploreMapView = dynamic(
+  () => import("@/components/map/explore-map-view").then((mod) => mod.ExploreMapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[550px] sm:h-[650px] rounded-3xl bg-slate-100 border-2 border-brand-forest-700/10 flex flex-col items-center justify-center gap-3 text-brand-forest-700">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-forest-800" />
+        <span className="text-xs font-bold">Loading interactive air quality map & CPCB stations...</span>
+      </div>
+    ),
+  }
+);
+
+// Preset search locations for quick exploration
+const PRESET_LOCATIONS = [
+  { name: "Connaught Place", lat: 28.6364, lon: 77.1993, city: "New Delhi" },
+  { name: "Anand Vihar", lat: 28.6469, lon: 77.3153, city: "New Delhi" },
+  { name: "Lodhi Road", lat: 28.5893, lon: 77.2215, city: "New Delhi" },
+  { name: "R.K. Puram", lat: 28.5632, lon: 77.1869, city: "New Delhi" },
+  { name: "Dwarka", lat: 28.585, lon: 77.065, city: "New Delhi" },
+  { name: "Noida Sec 62", lat: 28.628, lon: 77.3639, city: "Noida" },
+  { name: "Gurugram", lat: 28.4595, lon: 77.0266, city: "Gurugram" },
+];
 
 export default function ExplorePage() {
-  const { currentLocation } = useShell();
   const { toast } = useToast();
 
-  const sanctuaries: CleanSanctuary[] = [
-    { id: "s-1", name: "Lodhi Gardens Urban Canopy", distance: "2.4 km", type: "Park", currentAqi: 62, perks: "Dense tree buffer drops PM2.5 by 40%" },
-    { id: "s-2", name: "National Science Centre (Filtered)", distance: "4.1 km", type: "Indoor Garden", currentAqi: 24, perks: "Centralized commercial MERV-16 air filtration" },
-    { id: "s-3", name: "Sunder Nursery Eco Heritage", distance: "5.8 km", type: "Park", currentAqi: 74, perks: "Pristine walking loops with minimal vehicular exhaust" },
-  ];
+  const [mapData, setMapData] = React.useState<ExploreMapResponse | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  const neighborhoods = [
-    { name: "Lodhi Road", aqi: 62, status: "Moderate", trend: "-12" },
-    { name: "Connaught Place", aqi: 142, status: "Sensitive", trend: "+4" },
-    { name: "R.K. Puram", aqi: 188, status: "Unhealthy", trend: "+18" },
-    { name: "Anand Vihar", aqi: 275, status: "Very Unhealthy", trend: "+32" },
-    { name: "Okhla Phase II", aqi: 310, status: "Hazardous", trend: "+15" },
-  ];
+  // Active view: map or list
+  const [viewMode, setViewMode] = React.useState<"map" | "list">("map");
+
+  // Station type filter: all | ground_station | modeled | community_report
+  const [activeFilter, setActiveFilter] = React.useState<"all" | "ground_station" | "modeled" | "community_report">("all");
+
+  // Selected station for details panel
+  const [selectedStation, setSelectedStation] = React.useState<ExploreMapItem | null>(null);
+
+  // Current map center & user location
+  const [centerCoordinates, setCenterCoordinates] = React.useState<[number, number]>([28.6139, 77.209]);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [activeCityName, setActiveCityName] = React.useState("New Delhi");
+
+  // Fetch explore map data
+  const loadMapData = React.useCallback(
+    async (lat: number, lon: number, city: string, isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      try {
+        const res = await fetch(`/api/aqi/nearby?latitude=${lat}&longitude=${lon}&city=${encodeURIComponent(city)}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setMapData(json.data);
+          // Set first station as selected by default if none selected
+          if (!selectedStation && json.data.stations?.length > 0) {
+            setSelectedStation(json.data.stations[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch map data:", err);
+        toast({
+          type: "error",
+          title: "Connection Error",
+          message: "Could not load nearby AQI stations.",
+        });
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [selectedStation, toast]
+  );
+
+  React.useEffect(() => {
+    loadMapData(centerCoordinates[0], centerCoordinates[1], activeCityName);
+  }, [centerCoordinates, activeCityName, loadMapData]);
+
+  // Handle preset location selection
+  const handleSelectPreset = (loc: typeof PRESET_LOCATIONS[0]) => {
+    setCenterCoordinates([loc.lat, loc.lon]);
+    setActiveCityName(loc.city);
+    setSearchQuery(loc.name);
+    loadMapData(loc.lat, loc.lon, loc.city);
+    toast({
+      type: "info",
+      title: `Map Centered on ${loc.name}`,
+      message: `Fetching nearby ground stations and modeled points for ${loc.city}.`,
+    });
+  };
+
+  // Handle search submission
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    const matched = PRESET_LOCATIONS.find((p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (matched) {
+      handleSelectPreset(matched);
+    } else {
+      // Fallback search: New Delhi center with city update
+      setActiveCityName(searchQuery);
+      loadMapData(centerCoordinates[0], centerCoordinates[1], searchQuery);
+      toast({
+        type: "info",
+        title: `Searching "${searchQuery}"`,
+        message: "Fetching regional air quality network data...",
+      });
+    }
+  };
+
+  // Filter stations based on active filter
+  const filteredStations = React.useMemo(() => {
+    if (!mapData?.stations) return [];
+    if (activeFilter === "all") return mapData.stations;
+    return mapData.stations.filter((s) => s.type === activeFilter);
+  }, [mapData?.stations, activeFilter]);
+
+  // Select area from nearby comparison
+  const handleSelectNearbyArea = (areaId: string) => {
+    const station = mapData?.stations.find((s) => s.id === areaId);
+    if (station) {
+      setSelectedStation(station);
+      setCenterCoordinates([station.latitude, station.longitude]);
+    }
+  };
 
   return (
     <AppShell>
-      <div className="space-y-8">
-        {/* Header */}
+      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+        {/* ========================================================= */}
+        {/* HEADER & CONTROLS */}
+        {/* ========================================================= */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <Badge variant="sky" icon={<Compass className="h-3.5 w-3.5" />}>
-              Urban Air Sanctuary Finder
+              Spatial Air Quality Network
             </Badge>
-            <PageTitle className="mt-1">Explore Clean Air Zones</PageTitle>
+            <PageTitle className="mt-1">Explore Air Quality Map</PageTitle>
             <Subtitle className="mt-1">
-              Locate nearby green canopies, filtered public spaces, and compare neighborhood pollution in {currentLocation.city}.
+              Live interactive map differentiating official monitoring stations, modeled dispersion points, and community citizen reports.
             </Subtitle>
           </div>
 
-          <Button
-            variant="forest"
-            size="sm"
-            onClick={() =>
-              toast({
-                type: "success",
-                title: "Sanctuary Map Updated",
-                message: "Showing 12 public filtered zones and green parks near you.",
-              })
-            }
-            className="gap-2 font-bold shadow-xs"
-          >
-            <Navigation className="h-4 w-4" />
-            <span>Locate Nearest Clean Zone</span>
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Map / List View Toggle */}
+            <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setViewMode("map")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
+                  viewMode === "map"
+                    ? "bg-white text-brand-forest-950 shadow-xs"
+                    : "text-brand-forest-700 hover:text-brand-forest-950"
+                )}
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                <span>Map View</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
+                  viewMode === "list"
+                    ? "bg-white text-brand-forest-950 shadow-xs"
+                    : "text-brand-forest-700 hover:text-brand-forest-950"
+                )}
+              >
+                <List className="h-3.5 w-3.5" />
+                <span>List View</span>
+              </button>
+            </div>
+
+            {/* Locate Me / Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCenterCoordinates([28.6139, 77.209]);
+                loadMapData(28.6139, 77.209, "New Delhi", true);
+                toast({
+                  type: "info",
+                  title: "Centered on User Location",
+                  message: "Map centered on Central New Delhi.",
+                });
+              }}
+              disabled={refreshing}
+              className="gap-1.5 text-xs font-bold"
+            >
+              <Navigation className="h-3.5 w-3.5 text-brand-forest-800" />
+              <span>Locate Me</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Visual Map Canvas / Mockup */}
-        <Card className="overflow-hidden border-2 border-brand-mint-200/80 bg-white shadow-card">
-          <div className="relative h-64 sm:h-80 w-full bg-gradient-to-br from-[#E0F5EB] via-[#FFF8E8] to-[#DFF2FF] flex flex-col items-center justify-center p-6 text-center">
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#175C48_1px,transparent_1px)] [background-size:16px_16px]" />
+        {/* ========================================================= */}
+        {/* SEARCH BAR & PRESET CHIPS */}
+        {/* ========================================================= */}
+        <div className="space-y-3">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <Search className="absolute left-4 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search area, city or landmark (e.g. Anand Vihar, Connaught Place, Noida, Gurugram)..."
+              className="w-full pl-11 pr-24 py-3 bg-white border-2 border-brand-forest-700/10 rounded-2xl text-xs sm:text-sm font-medium text-brand-forest-950 placeholder:text-slate-400 focus:outline-hidden focus:border-brand-forest-700 transition-colors shadow-xs"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 px-4 py-1.5 bg-brand-forest-800 hover:bg-brand-forest-900 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+            >
+              Search
+            </button>
+          </form>
 
-            {/* Interactive map markers mockup */}
-            <div className="relative z-10 flex flex-wrap items-center justify-center gap-4">
-              <div className="flex items-center gap-2 rounded-2xl bg-white p-3 shadow-card border border-brand-mint-300 animate-bounce">
-                <Trees className="h-5 w-5 text-emerald-600" />
-                <div className="text-left">
-                  <span className="text-xs font-bold text-brand-forest-900 block">Lodhi Gardens</span>
-                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5">
-                    AQI 62 • Clean Canopy
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-2xl bg-white p-3 shadow-card border border-orange-300">
-                <MapPin className="h-5 w-5 text-orange-600" />
-                <div className="text-left">
-                  <span className="text-xs font-bold text-brand-forest-900 block">Current Location</span>
-                  <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100 rounded px-1.5 py-0.5">
-                    AQI 142 • Sensitive
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative z-10 mt-6 max-w-md rounded-2xl bg-white/90 p-3 shadow-sm backdrop-blur-xs">
-              <p className="text-xs font-medium text-brand-forest-800">
-                OpenStreetMap and Leaflet layer connected. Showing live micro-station heatmaps across the National Capital Region.
-              </p>
-            </div>
+          {/* Quick preset location chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 shrink-0">Popular Areas:</span>
+            {PRESET_LOCATIONS.map((loc) => (
+              <button
+                key={loc.name}
+                type="button"
+                onClick={() => handleSelectPreset(loc)}
+                className="shrink-0 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-brand-mint-50/80 text-brand-forest-800 text-[11px] font-semibold border border-slate-200 transition-colors"
+              >
+                {loc.name}
+              </button>
+            ))}
           </div>
-        </Card>
+        </div>
 
-        {/* Clean Sanctuaries List */}
-        <section className="space-y-4">
-          <SectionTitle>Top Clean Air Sanctuaries Near You</SectionTitle>
+        {/* ========================================================= */}
+        {/* PROVENANCE TRANSPARENCY NOTICE */}
+        {/* ========================================================= */}
+        <div className="rounded-2xl border-2 border-brand-mint-300 bg-brand-mint-50/50 p-4 flex items-start gap-3 text-xs text-brand-forest-900 leading-relaxed">
+          <Info className="h-4 w-4 text-brand-forest-800 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-extrabold text-brand-forest-950">Data Provenance Standard: </span>
+            AirAware strictly differentiates <strong>Official Monitoring Stations</strong> (CPCB/DPCC physical ground sensors) from <strong>Modeled Dispersion Locations</strong> (Open-Meteo mathematical grid points) and <strong>Community Reports</strong>. Modeled locations provide spatial coverage but are never represented as official ground sensors.
+          </div>
+        </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sanctuaries.map((s) => {
-              const theme = getAqiTheme(s.currentAqi);
-              return (
-                <Card
-                  key={s.id}
-                  className="p-5 border-2 border-brand-forest-700/10 bg-white shadow-card flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="mint" className="text-[10px]">
-                        {s.type}
-                      </Badge>
-                      <span className="text-xs font-bold text-brand-forest-700/60">{s.distance}</span>
+        {/* ========================================================= */}
+        {/* FILTER BUTTONS & STATION STATS */}
+        {/* ========================================================= */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl border transition-all shrink-0",
+                activeFilter === "all"
+                  ? "bg-brand-forest-800 text-white border-brand-forest-800 shadow-xs"
+                  : "bg-white text-brand-forest-800 border-slate-200 hover:border-brand-forest-700/30"
+              )}
+            >
+              All Locations ({mapData?.stats.totalLocations || 0})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveFilter("ground_station")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl border transition-all shrink-0 flex items-center gap-1.5",
+                activeFilter === "ground_station"
+                  ? "bg-emerald-700 text-white border-emerald-700 shadow-xs"
+                  : "bg-white text-emerald-900 border-slate-200 hover:border-emerald-300"
+              )}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Official CPCB ({mapData?.stats.officialStationsCount || 0})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveFilter("modeled")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl border transition-all shrink-0 flex items-center gap-1.5",
+                activeFilter === "modeled"
+                  ? "bg-purple-700 text-white border-purple-700 shadow-xs"
+                  : "bg-white text-purple-900 border-slate-200 hover:border-purple-300"
+              )}
+            >
+              <Radio className="h-3.5 w-3.5" />
+              <span>Modeled Grid ({mapData?.stats.modeledLocationsCount || 0})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveFilter("community_report")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl border transition-all shrink-0 flex items-center gap-1.5",
+                activeFilter === "community_report"
+                  ? "bg-amber-700 text-white border-amber-700 shadow-xs"
+                  : "bg-white text-amber-900 border-slate-200 hover:border-amber-300"
+              )}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Citizen Reports ({mapData?.stats.communityReportsCount || 0})</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-500 font-semibold self-start sm:self-auto">
+            Showing {filteredStations.length} verified data points
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* MAIN DISPLAY: MAP VIEW OR LIST VIEW */}
+        {/* ========================================================= */}
+        <div className="relative">
+          {viewMode === "map" ? (
+            <div className="relative flex flex-col lg:flex-row gap-6 items-start">
+              {/* Map Canvas */}
+              <div className="flex-1 w-full">
+                <ExploreMapView
+                  center={centerCoordinates}
+                  zoom={12}
+                  stations={filteredStations}
+                  selectedStation={selectedStation}
+                  onSelectStation={(st) => setSelectedStation(st)}
+                  userLocation={[28.6139, 77.209]}
+                />
+              </div>
+
+              {/* Station Details Panel (Desktop side pane / Mobile bottom drawer) */}
+              {selectedStation && (
+                <div className="w-full lg:w-96 shrink-0">
+                  <StationDetailsPanel
+                    station={selectedStation}
+                    onClose={() => setSelectedStation(null)}
+                    onUpvoteCommunityReport={(id) => {
+                      toast({
+                        type: "success",
+                        title: "Citizen Report Confirmed",
+                        message: "Thank you for confirming this localized smoke sighting.",
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            /* List View */
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredStations.map((st) => {
+                const isSelected = selectedStation?.id === st.id;
+                const isOfficial = st.type === "ground_station";
+                const isModeled = st.type === "modeled";
+
+                return (
+                  <Card
+                    key={st.id}
+                    onClick={() => {
+                      setSelectedStation(st);
+                      setViewMode("map");
+                      setCenterCoordinates([st.latitude, st.longitude]);
+                    }}
+                    className={cn(
+                      "cursor-pointer p-5 border-2 transition-all duration-200 flex flex-col justify-between shadow-card hover:border-brand-forest-700/40 select-none",
+                      isSelected
+                        ? "border-brand-forest-800 bg-brand-mint-50/40"
+                        : "border-brand-forest-700/10 bg-white"
+                    )}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isOfficial ? (
+                              <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[9px] font-black uppercase flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" /> CPCB Official
+                              </span>
+                            ) : isModeled ? (
+                              <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[9px] font-black uppercase flex items-center gap-1">
+                                <Radio className="h-3 w-3" /> Modeled Grid
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[9px] font-black uppercase flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" /> Citizen Report
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400 font-semibold">
+                              {st.distanceKm} km away
+                            </span>
+                          </div>
+
+                          <h4 className="font-bold text-sm text-brand-forest-950 leading-snug">
+                            {st.name}
+                          </h4>
+                        </div>
+
+                        {/* AQI Pill */}
+                        <div
+                          className="h-11 w-11 rounded-full flex flex-col items-center justify-center text-white font-black text-sm shadow-xs shrink-0"
+                          style={{ backgroundColor: st.color }}
+                        >
+                          {st.aqi}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                          <span className="text-slate-500 font-semibold block">PM2.5:</span>
+                          <span className="font-black text-brand-forest-950 text-xs">
+                            {st.pollutants.pm25} µg/m³
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                          <span className="text-slate-500 font-semibold block">PM10:</span>
+                          <span className="font-black text-brand-forest-950 text-xs">
+                            {st.pollutants.pm10} µg/m³
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 line-clamp-2">
+                        {st.healthAdvisory.summary}
+                      </p>
                     </div>
 
-                    <h4 className="mt-3 text-base font-bold text-brand-forest-900">{s.name}</h4>
-                    <p className="mt-1 text-xs text-brand-forest-800/80 leading-relaxed">{s.perks}</p>
-                  </div>
+                    <div className="mt-4 pt-3 border-t border-brand-forest-700/5 flex items-center justify-between text-xs font-bold text-brand-forest-800">
+                      <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {st.dataAge}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-brand-forest-900 group-hover:text-brand-forest-700">
+                        View on Map <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                  <div className="mt-5 pt-3 border-t border-brand-mint-100 flex items-center justify-between">
-                    <span
-                      className="rounded-full px-2.5 py-0.5 text-xs font-extrabold"
-                      style={{
-                        backgroundColor: theme.colorHex + "20",
-                        color: theme.category === "good" ? "#175C48" : theme.colorHex,
-                      }}
-                    >
-                      AQI {s.currentAqi} {theme.label}
-                    </span>
-
-                    <Button
-                      size="sm"
-                      variant="soft"
-                      onClick={() =>
-                        toast({
-                          type: "info",
-                          title: "Directions",
-                          message: `Opening navigation to ${s.name} (${s.distance}).`,
-                        })
-                      }
-                      className="text-xs font-bold"
-                    >
-                      Directions
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Neighborhood Air Comparison */}
-        <section className="space-y-4">
-          <SectionTitle>City Neighborhood Comparison</SectionTitle>
-          <div className="rounded-3xl bg-white border border-brand-forest-700/10 p-5 shadow-card overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-brand-mint-100 text-brand-forest-700/60 uppercase font-bold text-[10px]">
-                  <th className="pb-3">Station / Neighborhood</th>
-                  <th className="pb-3">AQI Score</th>
-                  <th className="pb-3">Severity Category</th>
-                  <th className="pb-3">24h Shift</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-semibold text-brand-forest-900">
-                {neighborhoods.map((n) => {
-                  const theme = getAqiTheme(n.aqi);
-                  return (
-                    <tr key={n.name} className="hover:bg-[#F0FAF5]/50 transition-colors">
-                      <td className="py-3 font-bold">{n.name}</td>
-                      <td className="py-3 font-black text-sm" style={{ color: theme.colorHex }}>
-                        {n.aqi}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                          style={{
-                            backgroundColor: theme.colorHex + "20",
-                            color: theme.category === "good" ? "#175C48" : theme.colorHex,
-                          }}
-                        >
-                          {n.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-brand-forest-700/60 font-mono">{n.trend} AQI</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        {/* ========================================================= */}
+        {/* NEARBY AREAS COMPARISON SECTION */}
+        {/* ========================================================= */}
+        <section className="pt-4 border-t border-brand-forest-700/10">
+          <NearbyComparisonSection
+            areas={mapData?.nearbyAreasComparison || []}
+            onSelectArea={handleSelectNearbyArea}
+            selectedAreaId={selectedStation?.id}
+          />
         </section>
       </div>
     </AppShell>

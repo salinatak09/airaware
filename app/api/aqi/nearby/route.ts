@@ -4,9 +4,7 @@ import { z } from "zod";
 import { apiSuccess } from "@/server/utils/response";
 import { withApiHandler } from "@/server/middleware/with-api-handler";
 import { validateQuery } from "@/server/utils/validation";
-import { aqiProviderService } from "@/server/services/aqi-provider.service";
-import { connectToDatabase } from "@/server/db";
-import { AQIReading } from "@/models";
+import { exploreService } from "@/server/services/explore.service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,42 +21,26 @@ const nearbyQuerySchema = z.object({
 /**
  * GET /api/aqi/nearby
  *
- * Retrieves comparative air quality readings from surrounding regional grid points
- * and ground monitoring stations stored in MongoDB.
- * Enables neighborhood-level comparison for commuters and school planners.
+ * Retrieves interactive air quality map stations, modeled grid points,
+ * community citizen reports, and nearby area comparisons with caching.
+ * Differentiates official ground stations from modeled and community data.
  */
 export const GET = withApiHandler(async (req: NextRequest) => {
   const query = validateQuery(req, nearbyQuerySchema);
 
-  const result = await aqiProviderService.getNearbyAirQuality(
+  const result = await exploreService.getExploreMapData(
     query.latitude,
     query.longitude,
-    query.city,
-    query.demo
+    query.city
   );
 
-  let dbStationCount = 0;
-  try {
-    await connectToDatabase();
-    const dbReadings = await AQIReading.find({
-      "location.city": query.city,
-    })
-      .sort({ recordedAt: -1 })
-      .limit(5)
-      .lean()
-      .exec();
-
-    dbStationCount = dbReadings.length;
-  } catch {
-    // Graceful fallback
-  }
-
   return apiSuccess(result, {
-    message: `Nearby regional air quality stations for ${query.city} retrieved successfully`,
+    message: `Nearby regional air quality stations & map data for ${query.city} retrieved successfully`,
     meta: {
-      stationsCount: result.stations.length,
-      groundStationsCached: dbStationCount,
-      dataSourceType: result.meta.type,
+      totalStationsCount: result.stations.length,
+      officialStationsCount: result.stats.officialStationsCount,
+      modeledLocationsCount: result.stats.modeledLocationsCount,
+      communityReportsCount: result.stats.communityReportsCount,
     },
   });
 });
