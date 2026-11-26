@@ -30,7 +30,7 @@ export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
       message: "Notifications retrieved",
     }
   );
-});
+}, { requireAuth: true });
 
 /**
  * POST /api/notifications
@@ -50,4 +50,4 @@ export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   }
 
   return apiSuccess({ success: true }, { message: "No action required" });
-});
+}, { requireAuth: true });

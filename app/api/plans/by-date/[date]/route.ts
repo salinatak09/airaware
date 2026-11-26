@@ -30,4 +30,4 @@ export const GET = withApiHandler<RouteContext>(async (_req: NextRequest, ctx, u
   return apiSuccess(plan, {
     message: `Air quality plan for ${parsedDate} retrieved successfully`,
   });
-});
+}, { requireAuth: true });

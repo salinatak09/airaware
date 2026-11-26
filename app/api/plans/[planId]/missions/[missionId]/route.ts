@@ -31,4 +31,4 @@ export const PATCH = withApiHandler<RouteContext>(async (req: NextRequest, ctx, 
   return apiSuccess(result, {
     message: result.message,
   });
-});
+}, { requireAuth: true });

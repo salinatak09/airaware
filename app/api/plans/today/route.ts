@@ -16,4 +16,4 @@ export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
   return apiSuccess(plan, {
     message: "Today's personalized daily plan retrieved",
   });
-});
+}, { requireAuth: true });

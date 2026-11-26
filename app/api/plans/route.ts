@@ -65,7 +65,7 @@ export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
   return apiSuccess(plan, {
     message: "Today's air quality activity plan retrieved",
   });
-});
+}, { requireAuth: true });
 
 /**
  * POST /api/plans
@@ -104,4 +104,4 @@ export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   return apiCreated(activity, {
     message: "Activity added to daily plan",
   });
-});
+}, { requireAuth: true });

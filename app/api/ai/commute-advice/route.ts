@@ -79,6 +79,7 @@ export const POST = withApiHandler(
     });
   },
   {
+    requireAuth: true,
     rateLimit: {
       maxRequests: RATE_LIMIT.AI_MAX_REQUESTS,
       windowMs: RATE_LIMIT.AI_WINDOW_MS,

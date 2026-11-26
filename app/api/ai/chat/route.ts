@@ -76,7 +76,7 @@ export const GET = withApiHandler(async (req: NextRequest, _ctx, user) => {
     console.error("[GET /api/ai/chat] Failed to fetch chat history:", err);
     return apiSuccess({ sessions: [], activeSession: null });
   }
-});
+}, {requireAuth: true});
 
 /**
  * POST /api/ai/chat
@@ -225,6 +225,7 @@ export const POST = withApiHandler(
     );
   },
   {
+    requireAuth: true,
     rateLimit: {
       maxRequests: RATE_LIMIT.AI_MAX_REQUESTS,
       windowMs: RATE_LIMIT.AI_WINDOW_MS,
@@ -258,4 +259,4 @@ export const DELETE = withApiHandler(async (req: NextRequest, _ctx, user) => {
     console.error("[DELETE /api/ai/chat] Error clearing chat session:", err);
     return apiSuccess({ cleared: true });
   }
-});
+}, {requireAuth: true});

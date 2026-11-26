@@ -37,7 +37,7 @@ export const GET = withApiHandler(async (_req: NextRequest, _ctx, user) => {
   return apiSuccess(overview, {
     message: "Indoor air quality sanctuary overview retrieved",
   });
-});
+}, {requireAuth: true});
 
 /**
  * POST /api/indoor
@@ -78,4 +78,4 @@ export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   }
 
   throw new Error("Invalid indoor action");
-});
+}, {requireAuth: true});

@@ -35,4 +35,4 @@ export const POST = withApiHandler(async (req: NextRequest, _ctx, user) => {
   return apiSuccess(plan, {
     message: "Personalized daily air quality plan generated successfully",
   });
-});
+}, {requireAuth: true});

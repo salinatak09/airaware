@@ -286,5 +286,6 @@ export const POST = withApiHandler(
         message: "AirAware onboarding complete! Your personalized protection shield is active (+100 XP).",
       }
     );
-  }
+  },
+  {requireAuth: true}
 );

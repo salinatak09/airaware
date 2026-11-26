@@ -2,18 +2,23 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export type CommunityReportType =
   | "garbage_burning"
+  | "smoke"
   | "industrial_smoke"
   | "construction_dust"
   | "crop_residue"
   | "heavy_traffic"
+  | "traffic_congestion"
+  | "unusual_pollution"
   | "clean_corridor"
   | "other";
 
-export type ModerationStatus = "pending" | "approved" | "rejected" | "flagged";
+export type ModerationStatus = "pending" | "approved" | "verified" | "flagged" | "rejected";
 
 export interface ICommunityReport {
   _id?: string;
   userId: Types.ObjectId | string;
+  authorName?: string;
+  authorRole?: string;
   location: {
     city: string;
     area: string;
@@ -22,14 +27,19 @@ export interface ICommunityReport {
       coordinates: [number, number]; // [longitude, latitude]
     };
     landmark?: string;
+    approximateAddress?: string;
+    isApproximate: boolean;
   };
   reportType: CommunityReportType;
   description: string;
-  imageReference?: string;
+  imageReference?: string; // Optional image URL or base64 data
   severity: "low" | "medium" | "high" | "severe";
   moderationStatus: ModerationStatus;
   upvotes: number;
   upvotedBy: Array<Types.ObjectId | string>;
+  flagsCount: number;
+  flaggedBy: Array<Types.ObjectId | string>;
+  observedAt: Date;
   reportedAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
@@ -44,6 +54,16 @@ const CommunityReportSchema = new Schema<ICommunityReportDocument>(
       ref: "User",
       required: true,
       index: true,
+    },
+    authorName: {
+      type: String,
+      trim: true,
+      default: "Local Resident",
+    },
+    authorRole: {
+      type: String,
+      trim: true,
+      default: "Community Watcher",
     },
     location: {
       city: { type: String, required: true, trim: true, index: true },
@@ -61,15 +81,20 @@ const CommunityReportSchema = new Schema<ICommunityReportDocument>(
         },
       },
       landmark: { type: String, trim: true, maxlength: 150 },
+      approximateAddress: { type: String, trim: true, maxlength: 200 },
+      isApproximate: { type: Boolean, default: true },
     },
     reportType: {
       type: String,
       enum: [
         "garbage_burning",
+        "smoke",
         "industrial_smoke",
         "construction_dust",
         "crop_residue",
         "heavy_traffic",
+        "traffic_congestion",
+        "unusual_pollution",
         "clean_corridor",
         "other",
       ],
@@ -93,7 +118,7 @@ const CommunityReportSchema = new Schema<ICommunityReportDocument>(
     },
     moderationStatus: {
       type: String,
-      enum: ["pending", "approved", "rejected", "flagged"],
+      enum: ["pending", "approved", "verified", "flagged", "rejected"],
       default: "pending",
       index: true,
     },
@@ -108,6 +133,21 @@ const CommunityReportSchema = new Schema<ICommunityReportDocument>(
         ref: "User",
       },
     ],
+    flagsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    flaggedBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    observedAt: {
+      type: Date,
+      default: Date.now,
+    },
     reportedAt: {
       type: Date,
       default: Date.now,
