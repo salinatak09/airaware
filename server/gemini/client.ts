@@ -1,18 +1,20 @@
 import "server-only";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, type GenerateContentConfig } from "@google/genai";
 import { env } from "@/lib/env";
 
-let geminiClientInstance: GoogleGenerativeAI | null = null;
+let geminiClientInstance: GoogleGenAI | null = null;
 
 /**
  * Returns a server-only singleton instance of GoogleGenerativeAI client.
  */
-export function getGeminiClient(): GoogleGenerativeAI {
+export function getGeminiClient(): GoogleGenAI {
   if (!geminiClientInstance) {
     if (!env.GEMINI_API_KEY) {
       throw new Error("GEMINI_API_KEY is not configured on the server.");
     }
-    geminiClientInstance = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+    geminiClientInstance = new GoogleGenAI({
+      apiKey: env.GEMINI_API_KEY
+    });
   }
   return geminiClientInstance;
 }
@@ -20,14 +22,15 @@ export function getGeminiClient(): GoogleGenerativeAI {
 /**
  * Returns the default generative model configured for AirAware assistant tasks.
  */
-export function getGeminiModel(modelName = "gemini-1.5-flash") {
-  const client = getGeminiClient();
-  return client.getGenerativeModel({
+export function getGeminiModel(modelName = "gemini-3.8-flash") {
+  // const client = getGeminiClient();
+  const config: GenerateContentConfig = {
+    temperature: 0.3,
+    topP: 0.8,
+    maxOutputTokens: 2048,
+  }
+  return {
     model: modelName,
-    generationConfig: {
-      temperature: 0.3,
-      topP: 0.8,
-      maxOutputTokens: 1024,
-    },
-  });
+    config
+  };
 }

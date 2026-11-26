@@ -18,7 +18,7 @@ export function AiDailyTip({ className }: { className?: string }) {
           <div>
             <h4 className="text-sm font-bold text-brand-forest-900">Aero AI Health Tip of the Day</h4>
             <span className="text-[10px] text-brand-forest-700/60 font-semibold">
-              Synthesized by Google Gemini 1.5 Air Engine
+              Synthesized by Google Gemini 3.8 Air Engine
             </span>
           </div>
         </div>

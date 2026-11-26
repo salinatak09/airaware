@@ -12,6 +12,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Power,
+  Coins,
+  Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +61,34 @@ export default function IndoorAirPage() {
       })
     );
   };
+
+  const [aiAdvice, setAiAdvice] = React.useState<any>(null);
+  const [loadingAdvice, setLoadingAdvice] = React.useState(true);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadIndoorAdvice() {
+      try {
+        const res = await fetch("/api/ai/indoor-advice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const json = await res.json();
+        if (json.success && isMounted) {
+          setAiAdvice(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load indoor AI advice:", err);
+      } finally {
+        if (isMounted) setLoadingAdvice(false);
+      }
+    }
+    loadIndoorAdvice();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <AppShell>
@@ -193,6 +223,88 @@ export default function IndoorAirPage() {
               </Card>
             ))}
           </div>
+        </section>
+
+        {/* Gemini AI Indoor Advice Card */}
+        <section className="rounded-3xl border-2 border-brand-mint-300 bg-white p-6 sm:p-8 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-brand-forest-700" />
+              <h3 className="text-lg font-bold text-brand-forest-900">
+                AI Indoor Sanctuary Guidance
+              </h3>
+            </div>
+            <Badge variant="mint" className="text-[10px]">
+              Safety Shield Active
+            </Badge>
+          </div>
+
+          {loadingAdvice ? (
+            <div className="flex items-center justify-center p-8 gap-2 text-brand-forest-700 text-xs font-semibold">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Analyzing indoor infiltration & household constraints...</span>
+            </div>
+          ) : aiAdvice ? (
+            <div className="space-y-6">
+              <p className="text-xs sm:text-sm text-brand-forest-800 leading-relaxed font-medium">
+                {aiAdvice.airQualityAssessment}
+              </p>
+
+              {/* Budget-Friendly Interventions */}
+              {aiAdvice.budgetFriendlyInterventions?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-brand-forest-700/80 mb-3 flex items-center gap-1.5">
+                    <Coins className="h-3.5 w-3.5" />
+                    <span>Low-Cost / Zero-Cost Interventions</span>
+                  </h4>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {aiAdvice.budgetFriendlyInterventions.map((item: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-brand-mint-200 bg-[#F0FAF5] p-3.5 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-xs text-brand-forest-900">{item.title}</span>
+                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-brand-mint text-brand-forest-900">
+                              {item.cost}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-brand-forest-800/80 leading-snug">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cooking and Cleaning Guidelines */}
+              <div className="grid gap-3 sm:grid-cols-2 pt-2 border-t border-brand-mint-100 text-xs">
+                {aiAdvice.cookingAndCombustionSafety?.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="font-bold text-brand-forest-900">Kitchen & Combustion Safety:</span>
+                    <ul className="list-disc list-inside text-brand-forest-700 space-y-0.5 text-[11px]">
+                      {aiAdvice.cookingAndCombustionSafety.map((tip: string, idx: number) => (
+                        <li key={idx}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {aiAdvice.cleaningAdvice?.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="font-bold text-brand-forest-900">Dust & Cleaning Protocols:</span>
+                    <ul className="list-disc list-inside text-brand-forest-700 space-y-0.5 text-[11px]">
+                      {aiAdvice.cleaningAdvice.map((tip: string, idx: number) => (
+                        <li key={idx}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* Smart Ventilation Window Timer */}
