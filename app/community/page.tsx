@@ -320,17 +320,22 @@ export default function CommunityPage() {
         {/* Search & Category Filter Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-brand-forest-700/10 shadow-xs">
           <div className="relative flex-1">
+            <label htmlFor="community-search-input" className="sr-only">
+              Search by neighborhood, crossroad, or hazard
+            </label>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
+              id="community-search-input"
               type="text"
+              aria-label="Search community reports"
               placeholder="Search by neighborhood, crossroad, or hazard (e.g. Lajpat Nagar, waste burning)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-mint"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-forest-800 min-h-[44px]"
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar" role="tablist" aria-label="Hazard Categories">
             {[
               { id: "all", label: "All Hazards" },
               { id: "garbage_burning", label: "🔥 Burning" },
@@ -341,12 +346,14 @@ export default function CommunityPage() {
             ].map((cat) => (
               <button
                 key={cat.id}
+                role="tab"
+                aria-selected={selectedCategory === cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border",
+                  "px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border min-h-[40px] shrink-0",
                   selectedCategory === cat.id
                     ? "bg-brand-forest-900 text-white border-brand-forest-900 shadow-xs"
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                 )}
               >
                 {cat.label}

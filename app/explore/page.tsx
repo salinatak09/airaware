@@ -237,31 +237,36 @@ export default function ExplorePage() {
         {/* ========================================================= */}
         <div className="space-y-3">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <label htmlFor="explore-search-input" className="sr-only">
+              Search area, city or station landmark
+            </label>
             <Search className="absolute left-4 h-4 w-4 text-slate-400" />
             <input
+              id="explore-search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search area, city or landmark (e.g. Anand Vihar, Connaught Place, Noida, Gurugram)..."
-              className="w-full pl-11 pr-24 py-3 bg-white border-2 border-brand-forest-700/10 rounded-2xl text-xs sm:text-sm font-medium text-brand-forest-950 placeholder:text-slate-400 focus:outline-hidden focus:border-brand-forest-700 transition-colors shadow-xs"
+              className="w-full pl-11 pr-24 py-3 bg-white border-2 border-brand-forest-700/10 rounded-2xl text-xs sm:text-sm font-medium text-brand-forest-950 placeholder:text-slate-400 focus:outline-hidden focus:border-brand-forest-700 transition-colors shadow-xs min-h-[44px]"
             />
             <button
               type="submit"
-              className="absolute right-2 px-4 py-1.5 bg-brand-forest-800 hover:bg-brand-forest-900 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+              aria-label="Submit search"
+              className="absolute right-2 px-4 py-2 bg-brand-forest-800 hover:bg-brand-forest-900 text-white rounded-xl text-xs font-bold transition-colors shadow-xs min-h-[38px]"
             >
               Search
             </button>
           </form>
 
           {/* Quick preset location chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
             <span className="text-[11px] font-bold text-slate-400 shrink-0">Popular Areas:</span>
             {PRESET_LOCATIONS.map((loc) => (
               <button
                 key={loc.name}
                 type="button"
                 onClick={() => handleSelectPreset(loc)}
-                className="shrink-0 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-brand-mint-50/80 text-brand-forest-800 text-[11px] font-semibold border border-slate-200 transition-colors"
+                className="shrink-0 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-mint-50/80 text-brand-forest-800 text-[11px] font-semibold border border-slate-200 transition-colors min-h-[36px]"
               >
                 {loc.name}
               </button>

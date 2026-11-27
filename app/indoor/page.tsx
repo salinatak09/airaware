@@ -467,9 +467,18 @@ export default function IndoorAirPage() {
             {overview?.checklist.map((item) => (
               <div
                 key={item.id}
+                role="checkbox"
+                aria-checked={item.completed}
+                tabIndex={0}
                 onClick={() => handleToggleChecklist(item)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggleChecklist(item);
+                  }
+                }}
                 className={cn(
-                  "cursor-pointer rounded-2xl border-2 p-4 transition-all duration-200 flex flex-col justify-between select-none shadow-xs",
+                  "cursor-pointer rounded-2xl border-2 p-4 transition-all duration-200 flex flex-col justify-between select-none shadow-xs min-h-[56px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest-800",
                   item.completed
                     ? "bg-brand-mint-50/60 border-brand-forest-700/30 text-brand-forest-950"
                     : "bg-white border-brand-forest-700/10 hover:border-brand-forest-700/20 text-brand-forest-800"

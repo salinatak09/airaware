@@ -191,9 +191,18 @@ export function DailyMissionsWidget({
           {/* Header Strip with Streak and Level */}
           <div className="flex items-center justify-between pb-4 border-b border-brand-mint-100">
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => setShowStreak(true)}
-              className="flex items-center gap-2 cursor-pointer group"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowStreak(true);
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest-800 rounded-2xl p-1"
               title="Click to view streak celebration details"
+              aria-label={`View streak details. Currently on a ${streakDays} day streak`}
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 font-black text-sm group-hover:scale-105 transition-transform">
                 <Flame className="h-5 w-5 fill-amber-500 text-amber-500" />
@@ -215,9 +224,18 @@ export function DailyMissionsWidget({
 
             <Badge
               variant="yellow"
+              role="button"
+              tabIndex={0}
               onClick={() => setShowLevelUp(true)}
-              className="text-xs font-bold gap-1 cursor-pointer hover:bg-amber-200 transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowLevelUp(true);
+                }
+              }}
+              className="text-xs font-bold gap-1 cursor-pointer hover:bg-amber-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest-800"
               title="Click to view Level Progress"
+              aria-label={`View level progression for Level ${level}: ${levelTitle}`}
             >
               <Trophy className="h-3.5 w-3.5" />
               <span>
@@ -250,9 +268,18 @@ export function DailyMissionsWidget({
                 return (
                   <div
                     key={m.missionId}
+                    role="checkbox"
+                    aria-checked={m.completed}
+                    tabIndex={0}
                     onClick={() => handleToggle(m)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleToggle(m);
+                      }
+                    }}
                     className={cn(
-                      "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none",
+                      "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest-800",
                       m.completed
                         ? "bg-[#F0FAF5] border-brand-mint-300 text-brand-forest-900 shadow-xs"
                         : "bg-white border-brand-forest-700/10 hover:border-brand-mint-200 hover:bg-slate-50",

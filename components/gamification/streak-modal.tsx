@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,9 @@ export function StreakModal({
                 <span className="text-amber-500">🔥</span>
                 <span>{streakDays} Day Streak!</span>
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                You have maintained continuous clean air habits for {streakDays} days!
+              </DialogDescription>
               <p className="text-xs sm:text-sm font-bold text-amber-800">
                 You have maintained continuous clean air habits for {streakDays} days!
               </p>

@@ -37,23 +37,24 @@ export function LocationSelector({ className }: { className?: string }) {
       <DialogTrigger asChild>
         <button
           type="button"
+          aria-label={`Select air quality monitoring station. Currently set to ${currentLocation.area}, ${currentLocation.city}`}
           className={cn(
-            "group flex items-center gap-2 rounded-2xl bg-white px-3.5 py-2 text-xs font-bold text-brand-forest-900 border border-brand-forest-700/10 shadow-xs hover:border-brand-mint-300 hover:bg-[#F0FAF5] transition-all",
+            "group flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-brand-forest-900 border border-brand-forest-700/10 shadow-xs hover:border-brand-mint-300 hover:bg-[#F0FAF5] transition-all min-h-[40px] max-w-[180px] sm:max-w-none",
             className
           )}
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-brand-mint-100 text-brand-forest-800">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-brand-mint-100 text-brand-forest-800">
             <MapPin className="h-3.5 w-3.5" />
           </div>
-          <div className="flex flex-col text-left">
-            <span className="leading-tight">{currentLocation.area}</span>
-            <span className="text-[10px] font-medium text-brand-forest-700/60 leading-none">
+          <div className="flex flex-col text-left truncate">
+            <span className="leading-tight truncate max-w-[70px] sm:max-w-[140px]">{currentLocation.area}</span>
+            <span className="text-[10px] font-medium text-brand-forest-700/60 leading-none hidden sm:block truncate">
               {currentLocation.city}
             </span>
           </div>
 
           <div
-            className="ml-1.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold"
+            className="ml-0.5 sm:ml-1.5 shrink-0 flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold"
             style={{
               backgroundColor: currentTheme.pillColor + "25",
               color: currentTheme.category === "good" ? "#175C48" : currentTheme.colorHex,
@@ -62,7 +63,7 @@ export function LocationSelector({ className }: { className?: string }) {
             <span>AQI {currentLocation.aqi}</span>
           </div>
 
-          <ChevronDown className="h-3.5 w-3.5 text-brand-forest-700/50 group-hover:text-brand-forest-900 transition-transform group-hover:translate-y-0.5" />
+          <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 text-brand-forest-700/50 group-hover:text-brand-forest-900 transition-transform group-hover:translate-y-0.5" />
         </button>
       </DialogTrigger>
 

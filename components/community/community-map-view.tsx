@@ -148,7 +148,7 @@ export function CommunityMapView({
   userLocation,
 }: CommunityMapViewProps) {
   return (
-    <div className="relative w-full h-[500px] sm:h-[600px] rounded-3xl overflow-hidden border-2 border-brand-forest-700/10 shadow-card">
+    <div className="relative w-full h-[380px] sm:h-[500px] lg:h-[600px] rounded-3xl overflow-hidden border-2 border-brand-forest-700/10 shadow-card min-w-0">
       <MapContainer
         center={center}
         zoom={zoom}

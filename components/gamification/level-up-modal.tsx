@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,9 @@ export function LevelUpModal({
                   Level {newLevel} Reached!
                 </DialogTitle>
               </div>
+              <DialogDescription className="sr-only">
+                Congratulations on reaching level {newLevel}: {levelTitle}. {perkDescription}
+              </DialogDescription>
               <h4 className="text-base sm:text-lg font-extrabold text-amber-800">
                 {levelTitle}
               </h4>

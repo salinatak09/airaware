@@ -124,7 +124,7 @@ export function HourlyAqiChart({ hourly, className }: HourlyAqiChartProps) {
         </div>
       </div>
 
-      <div className="mt-4 h-64 w-full">
+      <div className="mt-4 h-64 w-full min-w-0" role="region" aria-label="Hourly air quality forecast chart">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -140,13 +140,15 @@ export function HourlyAqiChart({ hourly, className }: HourlyAqiChartProps) {
               dataKey="time"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#175C48", fontWeight: 600 }}
+              tick={{ fontSize: 10, fill: "#175C48", fontWeight: 600 }}
+              interval="preserveStartEnd"
+              minTickGap={24}
               dy={8}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#64748B" }}
+              tick={{ fontSize: 10, fill: "#64748B" }}
               domain={[0, (dataMax: number) => Math.max(300, Math.ceil(dataMax / 50) * 50)]}
             />
             <Tooltip content={<CustomChartTooltip />} />

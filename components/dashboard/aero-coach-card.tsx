@@ -92,13 +92,13 @@ export function AeroCoachCard({
 
           <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3">
             <Link href={coach.actionHref}>
-              <Button size="sm" variant="forest" className="font-bold gap-1.5 text-xs shadow-xs">
+              <Button size="sm" variant="forest" className="font-bold gap-1.5 text-xs shadow-xs min-h-[40px]">
                 <span>{coach.actionText}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </Link>
             <Link href="/ai-buddy">
-              <Button size="sm" variant="outline" className="font-bold gap-1.5 text-xs border-brand-forest-700/20">
+              <Button size="sm" variant="outline" className="font-bold gap-1.5 text-xs border-brand-forest-700/20 min-h-[40px]">
                 <MessageCircle className="h-3.5 w-3.5 text-brand-forest-800" />
                 <span>Ask Aero</span>
               </Button>

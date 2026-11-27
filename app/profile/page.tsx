@@ -589,10 +589,41 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Mobile Horizontal Settings Category Selector */}
+        <div className="lg:hidden">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+            Select Settings Category
+          </span>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-0.5 scroll-smooth" role="tablist" aria-label="Settings Categories">
+            {SECTIONS.map((sec) => {
+              const Icon = sec.icon;
+              const isActive = activeSection === sec.id;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveSection(sec.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all min-h-[44px]",
+                    isActive
+                      ? "bg-brand-forest-900 text-white shadow-xs"
+                      : "bg-white border border-brand-forest-700/10 text-brand-forest-800 hover:bg-[#F0FAF5]"
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-amber-400" : "text-brand-forest-700")} />
+                  <span>{sec.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Main 2-Column Responsive Layout */}
-        <div className="grid gap-8 lg:grid-cols-12 items-start">
-          {/* Navigation Sidebar (4 cols on lg) */}
-          <div className="lg:col-span-4 sticky top-20 rounded-3xl bg-white border-2 border-brand-forest-700/10 p-4 shadow-card space-y-4">
+        <div className="grid gap-8 lg:grid-cols-12 items-start min-w-0">
+          {/* Desktop Navigation Sidebar (4 cols on lg, hidden on mobile) */}
+          <div className="hidden lg:block lg:col-span-4 sticky top-20 rounded-3xl bg-white border-2 border-brand-forest-700/10 p-4 shadow-card space-y-4">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 block">
               Settings Directory
             </span>
@@ -607,7 +638,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => setActiveSection(sec.id)}
                     className={cn(
-                      "w-full flex items-center justify-between p-2.5 rounded-2xl text-xs font-bold transition-all text-left",
+                      "w-full flex items-center justify-between p-2.5 rounded-2xl text-xs font-bold transition-all text-left min-h-[44px]",
                       isActive
                         ? "bg-brand-forest-900 text-white shadow-xs"
                         : "text-brand-forest-700 hover:bg-brand-forest-50 hover:text-brand-forest-900"
@@ -625,7 +656,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Active Section Content (8 cols on lg) */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 space-y-6 min-w-0">
             {/* 1. PROFILE INFORMATION */}
             {activeSection === "profile" && (
               <Card className="p-6 bg-white border-2 border-brand-forest-700/10 shadow-card space-y-6">

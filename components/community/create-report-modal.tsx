@@ -265,40 +265,45 @@ export function CreateReportModal({
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-semibold text-brand-forest-800 block mb-1">City</label>
+                  <label htmlFor="report-city" className="text-[11px] font-semibold text-brand-forest-800 block mb-1">
+                    City
+                  </label>
                   <input
+                    id="report-city"
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-mint"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-forest-800 min-h-[40px]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-brand-forest-800 block mb-1">
+                  <label htmlFor="report-area" className="text-[11px] font-semibold text-brand-forest-800 block mb-1">
                     Neighborhood / Colony
                   </label>
                   <input
+                    id="report-area"
                     type="text"
                     placeholder="e.g. Lajpat Nagar IV"
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-mint"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-forest-800 min-h-[40px]"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-brand-forest-800 block mb-1">
+                <label htmlFor="report-landmark" className="text-[11px] font-semibold text-brand-forest-800 block mb-1">
                   Public Landmark / Crossroad
                 </label>
                 <input
+                  id="report-landmark"
                   type="text"
                   placeholder="e.g. Near Metro Pillar 142 or Central Market Gate"
                   value={landmark}
                   onChange={(e) => setLandmark(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-mint"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-forest-800 min-h-[40px]"
                 />
                 <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                   <ShieldCheck className="h-3 w-3 text-emerald-600" />
@@ -334,15 +339,16 @@ export function CreateReportModal({
 
             {/* Description */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-brand-forest-900 block">
+              <label htmlFor="report-desc" className="text-xs font-bold text-brand-forest-900 block">
                 Observation Description *
               </label>
               <textarea
+                id="report-desc"
                 rows={3}
                 placeholder="Describe what you see or smell (e.g. dry leaves being burned in open plot, cement dust from uncovered tipper truck, continuous diesel exhaust)..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-mint"
+                className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-forest-800"
                 required
               />
               <span className="text-[10px] text-slate-400 block text-right">

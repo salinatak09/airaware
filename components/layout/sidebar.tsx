@@ -46,7 +46,7 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <aside
       className={cn(
-        "hidden lg:flex h-screen w-72 flex-col justify-between border-r border-brand-mint-200/60 bg-white p-5 shadow-sm sticky top-0 shrink-0 select-none",
+        "hidden lg:flex h-lvh w-72 flex-col justify-between border-r border-brand-mint-200/60 bg-white p-5 shadow-sm sticky top-0 shrink-0 select-none",
         className
       )}
     >

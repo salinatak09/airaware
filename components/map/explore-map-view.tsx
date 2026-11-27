@@ -149,11 +149,11 @@ export function ExploreMapView({
   const [currentZoom, setCurrentZoom] = React.useState(zoom);
 
   return (
-    <div className="relative w-full h-[550px] sm:h-[650px] rounded-3xl overflow-hidden border-2 border-brand-forest-700/10 shadow-card z-0">
+    <div className="relative w-full h-[380px] sm:h-[500px] lg:h-[650px] rounded-3xl overflow-hidden border-2 border-brand-forest-700/10 shadow-card z-0 min-w-0">
       <MapContainer
         center={center}
         zoom={zoom}
-        scrollWheelZoom={true}
+        scrollWheelZoom={false}
         className="w-full h-full"
         style={{ minHeight: "100%", width: "100%" }}
       >

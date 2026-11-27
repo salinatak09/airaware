@@ -52,25 +52,26 @@ export function UserProfileMenu() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-2xl bg-white p-1.5 pr-3 border border-brand-forest-700/10 shadow-xs hover:border-brand-mint-300 hover:bg-[#F0FAF5] transition-all"
+          aria-label={`User account and family member switcher. Currently active: ${displayName}`}
+          className="flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-white p-1 sm:p-1.5 pr-2 sm:pr-3 border border-brand-forest-700/10 shadow-xs hover:border-brand-mint-300 hover:bg-[#F0FAF5] transition-all min-h-[40px]"
         >
           <div
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-xl font-black text-xs shadow-xs text-brand-forest-900",
+              "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-xl font-black text-xs shadow-xs text-brand-forest-900 shrink-0",
               activeFamilyMember.avatarBg
             )}
           >
             {initials || "AA"}
           </div>
-          <div className="hidden sm:flex flex-col text-left">
-            <span className="text-xs font-bold text-brand-forest-900 leading-tight">
+          <div className="hidden sm:flex flex-col text-left truncate max-w-[90px] md:max-w-[130px]">
+            <span className="text-xs font-bold text-brand-forest-900 leading-tight truncate">
               {displayName}
             </span>
-            <span className="text-[10px] text-brand-forest-700/60 leading-none">
+            <span className="text-[10px] text-brand-forest-700/60 leading-none truncate">
               {displayEmail ? "Account" : activeFamilyMember.role}
             </span>
           </div>
-          <ChevronDown className="h-3 w-3 text-brand-forest-700/50" />
+          <ChevronDown className="h-3 w-3 text-brand-forest-700/50 shrink-0" />
         </button>
       </DialogTrigger>
 

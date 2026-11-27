@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,9 @@ export function ReportDetailsModal({
             <span className="text-2xl">{report.hazardIcon}</span>
             <span>{report.hazardLabel}</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Community pollution report for {report.hazardLabel} in {report.neighborhood}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Data Provenance & Safety Disclaimer Banner */}

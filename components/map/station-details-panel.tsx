@@ -33,14 +33,16 @@ export function StationDetailsPanel({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 20 }}
-        className="w-full lg:w-96 bg-white border-2 border-brand-forest-700/10 rounded-3xl shadow-card overflow-hidden flex flex-col max-h-[85vh] z-20"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 15 }}
+        role="region"
+        aria-label="Monitoring station details"
+        className="w-full lg:w-96 bg-white border-2 border-brand-forest-700/10 rounded-3xl shadow-card overflow-hidden flex flex-col max-h-[85vh] z-20 min-w-0"
       >
         {/* Panel Header */}
         <div
-          className="p-5 text-white relative flex flex-col justify-between"
+          className="p-4 sm:p-5 text-white relative flex flex-col justify-between"
           style={{
             backgroundColor:
               station.category === "severe"
@@ -89,8 +91,8 @@ export function StationDetailsPanel({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full bg-black/20 hover:bg-black/40 p-1.5 text-white transition-colors"
-              aria-label="Close panel"
+              className="rounded-full bg-black/20 hover:bg-black/40 h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center text-white transition-colors active:scale-95 shrink-0"
+              aria-label="Close station details"
             >
               <X className="h-4 w-4" />
             </button>

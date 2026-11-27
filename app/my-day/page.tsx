@@ -303,39 +303,45 @@ export default function MyDayPage() {
 
         {/* Filter Tabs Toolbar */}
         <div className="flex items-center justify-between border-b border-brand-mint-200 pb-2">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" role="tablist" aria-label="Action Filter Tabs">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "all"}
               onClick={() => setActiveTab("all")}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all",
+                "px-3.5 py-2 rounded-full text-xs font-bold transition-all min-h-[40px] shrink-0 whitespace-nowrap",
                 activeTab === "all"
                   ? "bg-brand-forest-800 text-white shadow-xs"
-                  : "text-brand-forest-700/70 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
+                  : "text-brand-forest-700/80 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
               )}
             >
               All Actions ({plan?.missions.length || 0})
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "active"}
               onClick={() => setActiveTab("active")}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all",
+                "px-3.5 py-2 rounded-full text-xs font-bold transition-all min-h-[40px] shrink-0 whitespace-nowrap",
                 activeTab === "active"
                   ? "bg-brand-forest-800 text-white shadow-xs"
-                  : "text-brand-forest-700/70 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
+                  : "text-brand-forest-700/80 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
               )}
             >
               Pending ({totalMissions - completedMissions.length})
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === "completed"}
               onClick={() => setActiveTab("completed")}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all",
+                "px-3.5 py-2 rounded-full text-xs font-bold transition-all min-h-[40px] shrink-0 whitespace-nowrap",
                 activeTab === "completed"
                   ? "bg-brand-forest-800 text-white shadow-xs"
-                  : "text-brand-forest-700/70 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
+                  : "text-brand-forest-700/80 hover:bg-[#F0FAF5] hover:text-brand-forest-900"
               )}
             >
               Completed ({completedMissions.length})

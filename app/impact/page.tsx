@@ -316,7 +316,7 @@ export default function ImpactPage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-brand-forest-700/10 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-brand-forest-700/10 pb-2 overflow-x-auto no-scrollbar" role="tablist" aria-label="Impact Navigation Tabs">
           {[
             { id: "overview", label: "Overview & Impact", icon: Activity },
             { id: "badges", label: "Badges & Achievements", icon: Award },
@@ -328,9 +328,11 @@ export default function ImpactPage() {
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                  "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap min-h-[44px] shrink-0",
                   isActive
                     ? "bg-brand-forest-900 text-white shadow-xs"
                     : "text-brand-forest-700 hover:bg-brand-forest-50 hover:text-brand-forest-900"

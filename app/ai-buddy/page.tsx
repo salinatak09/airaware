@@ -306,6 +306,7 @@ export default function AiBuddyPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setHistoryOpen(true)}
+                aria-label="View past chat sessions"
                 className="gap-1.5 rounded-xl text-xs font-bold border-brand-mint-200 text-brand-forest-800 hover:bg-[#F0FAF5]"
               >
                 <History className="h-3.5 w-3.5" />
@@ -315,6 +316,7 @@ export default function AiBuddyPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setClearConfirmOpen(true)}
+                aria-label="Clear conversation history"
                 className="gap-1.5 rounded-xl text-xs font-bold border-brand-mint-200 text-slate-600 hover:text-red-700 hover:bg-red-50"
                 title="Clear conversation"
               >
@@ -326,7 +328,7 @@ export default function AiBuddyPage() {
         </div>
 
         {/* Chat Window Container */}
-        <Card className="p-4 sm:p-6 bg-white border-2 border-brand-mint-200/80 shadow-card flex flex-col h-[600px] sm:h-[650px]">
+        <Card className="p-3 sm:p-6 bg-white border-2 border-brand-mint-200/80 shadow-card flex flex-col h-[calc(100dvh-230px)] min-h-[480px] sm:h-[650px] max-w-full">
           {/* Aero Header Bar inside Chat */}
           <div className="flex items-center justify-between pb-3 border-b border-brand-mint-100 mb-2">
             <div className="flex items-center gap-2.5">
@@ -350,6 +352,7 @@ export default function AiBuddyPage() {
               variant="ghost"
               size="sm"
               onClick={handleStartNewChat}
+              aria-label="Start a new chat topic"
               className="text-xs font-bold text-brand-forest-800 hover:bg-[#F0FAF5] gap-1"
             >
               <PlusCircle className="h-3.5 w-3.5" />
@@ -449,7 +452,7 @@ export default function AiBuddyPage() {
 
             {/* Typing Indicator with pulsing Aero */}
             {isLoading && (
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3" role="status" aria-live="polite">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-mint text-brand-forest-900 font-bold text-xs shadow-xs animate-pulse">
                   <Sparkles className="h-4 w-4" />
                 </div>
@@ -468,7 +471,7 @@ export default function AiBuddyPage() {
 
             {/* Inline Error Message */}
             {errorMessage && (
-              <div className="rounded-2xl bg-red-50 p-3 border border-red-200 text-red-700 text-xs flex items-center justify-between">
+              <div className="rounded-2xl bg-red-50 p-3 border border-red-200 text-red-700 text-xs flex items-center justify-between" role="alert" aria-live="assertive">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
                   <span>{errorMessage}</span>
@@ -487,20 +490,20 @@ export default function AiBuddyPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Question Chips */}
+          {/* Suggested Question Chips (Horizontally Scrollable Carousel on Mobile) */}
           <div className="pt-2 pb-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-brand-forest-700/60 mb-1.5 flex items-center gap-1">
               <Compass className="h-3 w-3" />
               <span>Suggested Questions</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar scroll-smooth">
               {suggestedPrompts.map((q) => (
                 <button
                   key={q}
                   type="button"
                   disabled={isLoading}
                   onClick={() => handleSend(q)}
-                  className="rounded-full bg-[#F0FAF5] px-3 py-1 text-[11px] font-semibold text-brand-forest-800 border border-brand-mint-200 hover:bg-brand-mint-100 hover:border-brand-mint-300 hover:text-brand-forest-900 transition-all disabled:opacity-50 text-left"
+                  className="shrink-0 rounded-full bg-[#F0FAF5] px-3.5 py-1.5 text-[11px] font-semibold text-brand-forest-800 border border-brand-mint-200 hover:bg-brand-mint-100 hover:border-brand-mint-300 hover:text-brand-forest-900 transition-all disabled:opacity-50 text-left min-h-[38px] flex items-center whitespace-nowrap active:scale-95"
                 >
                   {q}
                 </button>
@@ -516,20 +519,26 @@ export default function AiBuddyPage() {
             }}
             className="pt-2 flex items-center gap-2 border-t border-brand-mint-100"
           >
+            <label htmlFor="ai-buddy-input" className="sr-only">
+              Ask Aero about air quality and protection
+            </label>
             <input
+              id="ai-buddy-input"
               type="text"
+              aria-label="Ask Aero AI Buddy"
               placeholder={`Ask Aero about air safety for ${activeFamilyMember.name} in ${currentLocation.area}...`}
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 rounded-2xl border border-brand-mint-200 bg-[#F7FAF7] px-4 py-3 text-xs font-medium text-brand-forest-900 placeholder:text-brand-forest-700/40 focus:outline-none focus:ring-2 focus:ring-brand-mint disabled:opacity-60"
+              className="flex-1 rounded-2xl border border-brand-mint-200 bg-[#F7FAF7] px-4 py-3 text-xs font-medium text-brand-forest-900 placeholder:text-brand-forest-700/50 focus:outline-none focus:ring-2 focus:ring-brand-forest-800 disabled:opacity-60 min-h-[44px]"
             />
             <Button
               type="submit"
               variant="forest"
               size="icon"
+              aria-label="Send message to Aero"
               disabled={isLoading || !input.trim()}
-              className="shrink-0 rounded-2xl h-11 w-11 shadow-xs"
+              className="shrink-0 rounded-2xl shadow-xs"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>

@@ -63,7 +63,7 @@ export function StepIndicator({
       </div>
 
       {/* Step Pills for Tablet & Desktop */}
-      <div className="hidden sm:grid grid-cols-6 gap-2 pt-1">
+      <div className="hidden sm:grid grid-cols-6 gap-2 pt-1" role="tablist" aria-label="Onboarding Steps">
         {STEP_LABELS.map((item) => {
           const Icon = item.icon;
           const isDone = item.step < currentStep;
@@ -73,10 +73,13 @@ export function StepIndicator({
             <button
               key={item.step}
               type="button"
+              role="tab"
+              aria-selected={isCurrent}
+              aria-label={`Step ${item.step}: ${item.title}`}
               disabled={!isDone && !isCurrent}
               onClick={() => onStepClick?.(item.step)}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl py-1.5 px-2 text-[11px] font-bold transition-all select-none",
+                "flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-[11px] font-bold transition-all select-none min-h-[40px]",
                 isCurrent
                   ? "bg-brand-forest text-white shadow-xs"
                   : isDone

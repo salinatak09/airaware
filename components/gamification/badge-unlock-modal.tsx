@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,14 +92,14 @@ export function BadgeUnlockModal({
               <DialogTitle className="text-xl font-black tracking-tight text-white drop-shadow-sm">
                 {badge.name}
               </DialogTitle>
+              <DialogDescription className="text-xs text-white/90 font-medium leading-relaxed pt-1">
+                {badge.description}
+              </DialogDescription>
               <div className="flex items-center justify-center gap-1.5">
                 <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-black/20 text-white">
                   {badge.tier} Tier
                 </span>
               </div>
-              <p className="text-xs text-white/90 font-medium leading-relaxed pt-1">
-                {badge.description}
-              </p>
             </motion.div>
 
             {/* Honest Behavior Notice */}
