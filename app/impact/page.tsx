@@ -33,81 +33,49 @@ import { PageTitle, SectionTitle, Subtitle } from "@/components/ui/typography";
 import { useToast } from "@/components/ui/toast";
 import { AeroMascot } from "@/components/onboarding/aero-mascot";
 import { cn } from "@/lib/utils";
-import type {
-  GamificationDashboardData,
-} from "@/server/services/impact.service";
+import type { GamificationDashboardData } from "@/types/api";
+import {
+  useGamificationOverviewQuery,
+  useLogImpactActionMutation,
+} from "@/hooks/use-airaware-api";
 
 export default function ImpactPage() {
   const { toast } = useToast();
 
-  const [data, setData] = useState<GamificationDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data,
+    isLoading: loading,
+    refetch: refetchDashboard,
+    isRefetching: refreshing,
+  } = useGamificationOverviewQuery();
+
+  const logActionMutation = useLogImpactActionMutation();
+
   const [activeTab, setActiveTab] = useState<"overview" | "badges" | "challenges" | "history">("overview");
   const [badgeFilter, setBadgeFilter] = useState<"all" | "unlocked" | "locked">("all");
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Fetch gamification dashboard data from backend
-  const fetchDashboardData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-
-    try {
-      const res = await fetch("/api/impact");
-      if (!res.ok) throw new Error("Failed to load gamification data");
-      const json = await res.json();
-      setData(json.data);
-    } catch (err: any) {
-      console.error("Error fetching impact data:", err);
-      toast({
-        type: "error",
-        title: "Unable to load gamification stats",
-        message: err.message || "Please check your network and try again.",
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+  const fetchDashboardData = useCallback(async (_isRefresh?: boolean) => {
+    await refetchDashboard();
+  }, [refetchDashboard]);
 
   // Log an action / check-in to earn XP
   const handleLogAction = async (actionType: string, missionId: string, customTitle?: string) => {
     setCheckingInId(missionId);
     try {
-      const res = await fetch("/api/impact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionType, missionId, customTitle }),
+      const res = await logActionMutation.mutateAsync({
+        actionType,
+        missionId,
+        customTitle,
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 409 || result.code === "ALREADY_COMPLETED_TODAY") {
-          toast({
-            type: "info",
-            title: "Already Logged Today",
-            message: result.error || "You've already claimed this reward today. Keep up the great defense tomorrow!",
-          });
-          return;
-        }
-        throw new Error(result.error || "Failed to record action");
-      }
 
       toast({
         type: "success",
-        title: `+${result.data.xpEarned} XP Earned!`,
-        message: result.data.message || "Daily defense action verified and added to your streak.",
+        title: `+${res.xpEarned} XP Earned!`,
+        message: res.message || "Daily defense action verified and added to your streak.",
       });
-
-      // Refresh overview
-      await fetchDashboardData(true);
     } catch (err: any) {
       toast({
         type: "error",

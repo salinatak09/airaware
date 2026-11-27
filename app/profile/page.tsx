@@ -52,6 +52,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
 
 const SECTIONS = [
   { id: "profile", label: "Profile Information", icon: User, group: "Account & Identity" },
@@ -374,16 +375,7 @@ export default function ProfilePage() {
         },
       };
 
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to save profile");
-      }
+      await apiClient.profile.update(payload as any);
 
       toast({
         type: "success",
@@ -447,9 +439,7 @@ export default function ProfilePage() {
   const handleResetAiMemory = async () => {
     setIsResettingAi(true);
     try {
-      const res = await fetch("/api/profile/reset-ai", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to reset AI memory");
+      await apiClient.profile.resetAiHistory();
 
       toast({
         type: "success",
@@ -473,13 +463,7 @@ export default function ProfilePage() {
 
     setIsUpdatingPassword(true);
     try {
-      const res = await fetch("/api/profile/security", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to update password");
+      await apiClient.profile.updateSecurity({ currentPassword, newPassword });
 
       toast({
         type: "success",

@@ -35,8 +35,9 @@ import type {
   CommunityReportDto,
   CommunityChallengeItem,
   NeighborhoodActivityItem,
-} from "@/server/services/community.service";
-import type { CommunityReportType } from "@/models/CommunityReport";
+} from "@/types/api";
+import type { CommunityReportType } from "@/lib/community-constants";
+import { apiClient } from "@/lib/api-client";
 
 // Dynamically import Leaflet Map with ssr: false
 const CommunityMapView = dynamic(
@@ -84,15 +85,12 @@ export default function CommunityPage() {
     else setLoading(true);
 
     try {
-      const url = new URL("/api/community", window.location.origin);
-      if (currentLocation?.city) url.searchParams.set("city", currentLocation.city);
-      if (selectedCategory !== "all") url.searchParams.set("category", selectedCategory);
-      if (selectedStatus !== "all") url.searchParams.set("status", selectedStatus);
-
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error("Failed to load community reports");
-      const json = await res.json();
-      setReports(json.data || []);
+      const data = await apiClient.community.getReports({
+        city: currentLocation?.city,
+        category: selectedCategory,
+        status: selectedStatus !== "all" ? selectedStatus : undefined,
+      });
+      setReports(data || []);
     } catch (err: any) {
       console.error("Error loading community reports:", err);
       toast({
@@ -109,11 +107,12 @@ export default function CommunityPage() {
   // Fetch Challenges & Activities
   const fetchChallengesAndActivities = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/community/challenges");
-      if (res.ok) {
-        const json = await res.json();
-        setChallenges(json.data?.challenges || []);
-        setActivities(json.data?.awarenessActivities || []);
+      const data: any = await apiClient.community.getChallenges();
+      if (Array.isArray(data)) {
+        setChallenges(data);
+      } else if (data?.challenges) {
+        setChallenges(data.challenges);
+        setActivities(data.awarenessActivities || []);
       }
     } catch (err) {
       console.warn("Challenges fetch error:", err);

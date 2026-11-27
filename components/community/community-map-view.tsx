@@ -11,7 +11,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { CommunityReportDto } from "@/server/services/community.service";
+import type { CommunityReportDto } from "@/types/api";
 
 interface CommunityMapViewProps {
   center: [number, number]; // [lat, lon]

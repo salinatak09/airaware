@@ -25,7 +25,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CommunityReportDto } from "@/server/services/community.service";
+import type { CommunityReportDto } from "@/types/api";
 
 interface ReportDetailsModalProps {
   report: CommunityReportDto | null;

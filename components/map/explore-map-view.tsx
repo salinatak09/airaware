@@ -10,7 +10,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { ExploreMapItem } from "@/server/services/explore.service";
+import type { ExploreMapItem } from "@/types/api";
 
 interface ExploreMapViewProps {
   center: [number, number];

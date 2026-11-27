@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { NearbyAreaComparison } from "@/server/services/explore.service";
+import type { NearbyAreaComparison } from "@/types/api";
 
 interface NearbyComparisonProps {
   areas: NearbyAreaComparison[];

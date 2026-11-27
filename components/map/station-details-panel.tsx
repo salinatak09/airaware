@@ -11,7 +11,7 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ExploreMapItem } from "@/server/services/explore.service";
+import type { ExploreMapItem } from "@/types/api";
 
 interface StationDetailsPanelProps {
   station: ExploreMapItem | null;

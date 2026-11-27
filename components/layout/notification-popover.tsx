@@ -36,24 +36,8 @@ import {
   type BrowserPermissionStatus,
 } from "@/lib/browser-notifications";
 
-interface NotificationItemDto {
-  id: string;
-  type: NotificationType;
-  typeLabel: string;
-  typeIcon: string;
-  title: string;
-  message: string;
-  severity: NotificationSeverity;
-  isRead: boolean;
-  timeFormatted: string;
-  createdAt: string;
-  dataSource?: string;
-  dataTimestamp?: string;
-  currentAqi?: number;
-  previousAqi?: number;
-  actionLabel?: string;
-  actionUrl?: string;
-}
+import { apiClient } from "@/lib/api-client";
+import type { NotificationItemDto } from "@/types/api";
 
 export function NotificationMenu() {
   const { toast } = useToast();
@@ -75,15 +59,12 @@ export function NotificationMenu() {
   const fetchNotifications = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/notifications");
-      if (res.ok) {
-        const json = await res.json();
-        const items = json.data?.notifications || [];
-        setNotifications(items);
-        setUnreadCount(json.data?.unreadCount || 0);
-        if (json.data?.preferences) {
-          setPreferences(json.data.preferences);
-        }
+      const data = await apiClient.notifications.getAll();
+      const items = data?.notifications || [];
+      setNotifications(items);
+      setUnreadCount(data?.unreadCount || 0);
+      if (data?.preferences) {
+        setPreferences(data.preferences);
       }
     } catch (err) {
       console.warn("Failed to fetch notifications:", err);
@@ -109,11 +90,7 @@ export function NotificationMenu() {
 
       // Update preferences
       try {
-        await fetch("/api/notifications/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ browserNotificationsEnabled: true }),
-        });
+        await apiClient.notifications.updatePreferences({ browserNotificationsEnabled: true });
         setPreferences((p) => ({ ...p, browserNotificationsEnabled: true }));
       } catch {
         // Fallback
@@ -136,7 +113,7 @@ export function NotificationMenu() {
   // Mark single as read
   const handleMarkAsRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+      await apiClient.notifications.markRead(id);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
@@ -149,7 +126,7 @@ export function NotificationMenu() {
   // Mark all as read
   const handleMarkAllRead = async () => {
     try {
-      await fetch("/api/notifications/read-all", { method: "POST" });
+      await apiClient.notifications.markAllRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
       toast({
@@ -170,12 +147,7 @@ export function NotificationMenu() {
 
     try {
       setSavingPrefs(true);
-      await fetch("/api/notifications/preferences", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [category]: newVal }),
-      });
-      // Refresh notifications feed with new filter
+      await apiClient.notifications.updatePreferences({ [category]: newVal });
       await fetchNotifications();
     } catch (err) {
       console.warn("Preference update error:", err);

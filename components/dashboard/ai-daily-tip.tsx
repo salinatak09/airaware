@@ -3,13 +3,54 @@
 import * as React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Bot, ArrowRight, Lightbulb } from "lucide-react";
+import { Sparkles, ArrowRight, Lightbulb, RefreshCw, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
 
-export function AiDailyTip({ className }: { className?: string }) {
+export interface AiDailyTipProps {
+  className?: string;
+  initialHeadline?: string;
+  initialTip?: string;
+  targetAudience?: string;
+}
+
+export function AiDailyTip({
+  className,
+  initialHeadline = "Why you should avoid morning cross-ventilation during peak smog",
+  initialTip = "Between 6:00 AM and 10:00 AM, thermal radiation cooling traps heavy vehicular and biomass smoke within 50 meters of the ground. Opening balcony doors during this time pulls toxic PM2.5 directly into bedrooms. Wait until 2:00 PM when solar convection lifts the boundary layer, dropping ambient PM2.5 by up to 60%.",
+  targetAudience = "All Family Members",
+}: AiDailyTipProps) {
+  const [headline, setHeadline] = React.useState(initialHeadline);
+  const [tip, setTip] = React.useState(initialTip);
+  const [audience, setAudience] = React.useState(targetAudience);
+  const [loading, setLoading] = React.useState(false);
+
+  const fetchFreshSummary = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.ai.getDailySummary({});
+      if (res?.headline && res?.summary) {
+        setHeadline(res.headline);
+        setTip(res.summary);
+        if (res.primaryAction) {
+          setAudience(res.primaryAction);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load Gemini daily tip:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Card className={cn("p-6 bg-gradient-to-br from-[#FFFDF6] via-[#FFF8E8] to-[#F0FAF5] border-2 border-brand-cream-300 shadow-card", className)}>
+    <Card
+      className={cn(
+        "p-6 bg-gradient-to-br from-[#FFFDF6] via-[#FFF8E8] to-[#F0FAF5] border-2 border-brand-cream-300 shadow-card",
+        className
+      )}
+    >
       <div className="flex items-center justify-between pb-3 border-b border-brand-cream-300/80">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
@@ -23,27 +64,34 @@ export function AiDailyTip({ className }: { className?: string }) {
           </div>
         </div>
 
-        <Badge variant="yellow" className="text-[10px] font-bold gap-1">
-          <Sparkles className="h-3 w-3" />
-          <span>Daily Insight</span>
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={fetchFreshSummary}
+            disabled={loading}
+            className="p-1 rounded-lg text-brand-forest-700/60 hover:text-brand-forest-900 hover:bg-amber-100/50 transition-colors"
+            title="Regenerate with Gemini"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          </button>
+          <Badge variant="yellow" className="text-[10px] font-bold gap-1">
+            <Sparkles className="h-3 w-3" />
+            <span>Daily Insight</span>
+          </Badge>
+        </div>
       </div>
 
       <div className="mt-4 space-y-2">
-        <h5 className="text-base font-extrabold text-brand-forest-900">
-          Why you should avoid morning cross-ventilation in Delhi
+        <h5 className="text-base font-extrabold text-brand-forest-900 leading-snug">
+          {headline}
         </h5>
         <p className="text-xs sm:text-sm text-brand-forest-800/80 leading-relaxed">
-          Between 6:00 AM and 10:00 AM, thermal radiation cooling traps heavy vehicular and biomass smoke within 50
-          meters of the ground. Opening balcony doors during this time pulls toxic PM2.5 directly into bedrooms.
-          Wait until <strong>2:00 PM</strong> when solar convection lifts the boundary layer, dropping ambient PM2.5 by
-          up to 60%.
+          {tip}
         </p>
       </div>
 
       <div className="mt-4 pt-3 border-t border-brand-cream-300/60 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-brand-forest-700/70">
-          Applicable for: All Family Members
+        <span className="text-[11px] font-bold text-brand-forest-700/70 truncate max-w-[200px]">
+          Target: {audience}
         </span>
         <Link
           href="/ai-buddy"

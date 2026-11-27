@@ -29,14 +29,26 @@ import { PageTitle, SectionTitle, Subtitle } from "@/components/ui/typography";
 import { useToast } from "@/components/ui/toast";
 import { AeroMascot } from "@/components/onboarding/aero-mascot";
 import { cn } from "@/lib/utils";
-import type { IndoorAirOverview, IndoorChecklistItem, HomeHealthMission } from "@/server/services/indoor.service";
+import type { IndoorAirOverview, IndoorChecklistItem, HomeHealthMission } from "@/types/api";
+import {
+  useIndoorOverviewQuery,
+  useToggleChecklistMutation,
+  useCompleteIndoorMissionMutation,
+} from "@/hooks/use-airaware-api";
+import { apiClient } from "@/lib/api-client";
 
 export default function IndoorAirPage() {
   const { toast } = useToast();
 
-  const [overview, setOverview] = React.useState<IndoorAirOverview | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const {
+    data: overview,
+    isLoading: loading,
+    refetch: refetchOverview,
+    isRefetching: refreshing,
+  } = useIndoorOverviewQuery();
+
+  const toggleChecklistMutation = useToggleChecklistMutation();
+  const completeMissionMutation = useCompleteIndoorMissionMutation();
 
   // CADR Calculator state
   const [roomAreaSqFt, setRoomAreaSqFt] = React.useState(200);
@@ -49,50 +61,21 @@ export default function IndoorAirPage() {
   const [aiAdvice, setAiAdvice] = React.useState<any>(null);
   const [loadingAi, setLoadingAi] = React.useState(false);
 
-  // Fetch indoor overview
-  const fetchOverview = React.useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    try {
-      const res = await fetch("/api/indoor");
-      const json = await res.json();
-      if (json.success && json.data) {
-        setOverview(json.data);
-      }
-    } catch (err) {
-      console.error("Failed to load indoor overview:", err);
-      toast({
-        type: "error",
-        title: "Connection Error",
-        message: "Failed to load indoor air quality assessment.",
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [toast]);
-
-  React.useEffect(() => {
-    fetchOverview();
-  }, [fetchOverview]);
+  const fetchOverview = React.useCallback(async (_isRefresh?: boolean) => {
+    await refetchOverview();
+  }, [refetchOverview]);
 
   // Request live Gemini AI advice
   const handleFetchAiAdvice = async () => {
     setLoadingAi(true);
     try {
-      const res = await fetch("/api/ai/indoor-advice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+      const data = await apiClient.indoor.getAdvice({});
+      setAiAdvice(data);
+      toast({
+        type: "success",
+        title: "AI Guidance Updated",
+        message: "Gemini analyzed your home profile and generated targeted advice.",
       });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setAiAdvice(json.data);
-        toast({
-          type: "success",
-          title: "AI Guidance Updated",
-          message: "Gemini analyzed your home profile and generated targeted advice.",
-        });
-      }
     } catch (err) {
       console.error("Failed to fetch AI indoor advice:", err);
       toast({
@@ -107,44 +90,24 @@ export default function IndoorAirPage() {
 
   // Toggle checklist item
   const handleToggleChecklist = async (item: IndoorChecklistItem) => {
-    if (!overview) return;
     const newCompleted = !item.completed;
-
-    // Optimistic UI update
-    setOverview((prev) => {
-      if (!prev) return null;
-      const updatedChecklist = prev.checklist.map((c) =>
-        c.id === item.id ? { ...c, completed: newCompleted } : c
-      );
-      const completedCount = updatedChecklist.filter((c) => c.completed).length;
-      const delta = newCompleted ? 2 : -2;
-      return {
-        ...prev,
-        checklist: updatedChecklist,
-        sanctuaryScore: Math.min(95, Math.max(30, prev.sanctuaryScore + delta)),
-      };
-    });
-
     try {
-      const res = await fetch("/api/indoor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "toggle_checklist",
-          itemId: item.id,
-          completed: newCompleted,
-        }),
+      await toggleChecklistMutation.mutateAsync({
+        itemId: item.id,
+        completed: newCompleted,
       });
-      const json = await res.json();
-      if (json.success) {
-        toast({
-          type: newCompleted ? "success" : "info",
-          title: newCompleted ? "Habit Completed! 🌿" : "Habit Reset",
-          message: `${item.title} updated in your daily sanctuary defense.`,
-        });
-      }
-    } catch (err) {
+      toast({
+        type: newCompleted ? "success" : "info",
+        title: newCompleted ? "Habit Completed! 🌿" : "Habit Reset",
+        message: `${item.title} updated in your daily sanctuary defense.`,
+      });
+    } catch (err: any) {
       console.error("Checklist toggle failed:", err);
+      toast({
+        type: "error",
+        title: "Action Failed",
+        message: err.message || "Failed to update checklist.",
+      });
     }
   };
 
@@ -153,45 +116,18 @@ export default function IndoorAirPage() {
     if (mission.completed) return;
 
     try {
-      const res = await fetch("/api/indoor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "complete_mission",
-          missionId: mission.id,
-        }),
+      const res = await completeMissionMutation.mutateAsync(mission.id);
+      toast({
+        type: "success",
+        title: `Mission Completed! +${mission.xpReward} XP 🏆`,
+        message: res.message || `You completed "${mission.title}"!`,
       });
-      const json = await res.json();
-
-      if (json.success) {
-        setOverview((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            homeMissions: prev.homeMissions.map((m) =>
-              m.id === mission.id ? { ...m, completed: true, completedAt: new Date().toISOString() } : m
-            ),
-          };
-        });
-
-        toast({
-          type: "success",
-          title: `Mission Completed! +${mission.xpReward} XP 🏆`,
-          message: json.data?.message || `You completed "${mission.title}"!`,
-        });
-      } else {
-        toast({
-          type: "warning",
-          title: "Already Completed",
-          message: json.message || "This mission was already completed today.",
-        });
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Mission completion failed:", err);
       toast({
         type: "error",
         title: "Error",
-        message: "Failed to record mission completion.",
+        message: err.message || "Failed to record mission completion.",
       });
     }
   };

@@ -25,7 +25,8 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { StationDetailsPanel } from "@/components/map/station-details-panel";
 import { NearbyComparisonSection } from "@/components/map/nearby-comparison-card";
-import type { ExploreMapItem, ExploreMapResponse } from "@/server/services/explore.service";
+import type { ExploreMapItem, ExploreMapResponse } from "@/types/api";
+import { apiClient } from "@/lib/api-client";
 
 // Dynamically import Leaflet map component with ssr: false to prevent window errors during SSR
 const ExploreMapView = dynamic(
@@ -80,14 +81,14 @@ export default function ExplorePage() {
       else setLoading(true);
 
       try {
-        const res = await fetch(`/api/aqi/nearby?latitude=${lat}&longitude=${lon}&city=${encodeURIComponent(city)}`);
-        const json = await res.json();
-        if (json.success && json.data) {
-          setMapData(json.data);
-          // Set first station as selected by default if none selected
-          if (!selectedStation && json.data.stations?.length > 0) {
-            setSelectedStation(json.data.stations[0]);
-          }
+        const data = await apiClient.aqi.getNearby({
+          latitude: lat,
+          longitude: lon,
+          city,
+        });
+        setMapData(data);
+        if (!selectedStation && data.stations?.length > 0) {
+          setSelectedStation(data.stations[0]);
         }
       } catch (err) {
         console.error("Failed to fetch map data:", err);

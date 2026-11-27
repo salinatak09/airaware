@@ -31,120 +31,57 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-interface Mission {
-  missionId: string;
-  time: string;
-  title: string;
-  description: string;
-  whyItMatters: string;
-  priority: "high" | "medium" | "low";
-  estimatedDuration: string;
-  category: "protection" | "indoor" | "habit" | "community" | "transit";
-  xpReward: number;
-  completed: boolean;
-  completedAt?: string;
-  skipped?: boolean;
-  rescheduledTime?: string;
-}
+import {
+  useTodayPlanQuery,
+  useGeneratePlanMutation,
+  useUpdateMissionMutation,
+} from "@/hooks/use-airaware-api";
+import type { PlanMission, DailyPlanResponse } from "@/types/api";
 
-interface PlanData {
-  _id: string;
-  date: string;
-  aqiContext: {
-    expectedAqi: number;
-    category: string;
-    safestWindow?: {
-      start: string;
-      end: string;
-      reason: string;
-    };
-    peakSmogWindow?: {
-      start: string;
-      end: string;
-      reason: string;
-    };
-    dominantRisk?: string;
-  };
-  missions: Mission[];
-  recommendations: {
-    general?: string[];
-    outdoorActivity?: string[];
-    indoorEnvironment?: string[];
-    commute?: string[];
-    exercise?: string[];
-  };
-  planVersion: number;
-}
+type Mission = PlanMission;
+type PlanData = DailyPlanResponse;
 
 export default function MyDayPage() {
   const { currentLocation, activeFamilyMember } = useShell();
   const { toast } = useToast();
 
-  const [plan, setPlan] = React.useState<PlanData | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isRegenerating, setIsRegenerating] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"all" | "active" | "completed">("all");
+
+  // TanStack Query integration
+  const {
+    data: plan,
+    isLoading,
+    isError,
+    error: loadError,
+    refetch: refetchPlan,
+  } = useTodayPlanQuery();
+
+  const generatePlanMutation = useGeneratePlanMutation();
+  const updateMissionMutation = useUpdateMissionMutation();
 
   // Reschedule state
   const [rescheduleMission, setRescheduleMission] = React.useState<Mission | null>(null);
   const [newRescheduledTime, setNewRescheduledTime] = React.useState("02:00 PM");
 
-  const loadTodayPlan = React.useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const res = await fetch("/api/plans/today");
-      const json = await res.json();
-      if (json.success && json.data) {
-        setPlan(json.data);
-      }
-    } catch (err) {
-      console.error("Failed to load today's plan:", err);
-      toast({
-        type: "error",
-        title: "Load Error",
-        message: "Could not fetch today's air plan. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  React.useEffect(() => {
-    loadTodayPlan();
-  }, [loadTodayPlan]);
-
   const handleRegenerate = async () => {
     try {
-      setIsRegenerating(true);
-      const res = await fetch("/api/plans/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          forceRegenerate: true,
-          currentAqi: currentLocation.aqi,
-          city: currentLocation.city,
-        }),
+      await generatePlanMutation.mutateAsync({
+        forceRegenerate: true,
+        currentAqi: currentLocation.aqi,
+        city: currentLocation.city,
       });
 
-      const json = await res.json();
-      if (json.success && json.data) {
-        setPlan(json.data);
-        toast({
-          type: "success",
-          title: "Plan Regenerated",
-          message: "A fresh personalized timeline has been compiled by Gemini.",
-        });
-      } else {
-        throw new Error(json.error?.message || "Regeneration failed");
-      }
+      toast({
+        type: "success",
+        title: "Plan Regenerated",
+        message: "A fresh personalized timeline has been compiled by Gemini.",
+      });
     } catch (err: any) {
       toast({
         type: "error",
         title: "Regeneration Failed",
         message: err.message || "Failed to regenerate plan.",
       });
-    } finally {
-      setIsRegenerating(false);
     }
   };
 
@@ -152,34 +89,22 @@ export default function MyDayPage() {
     if (!plan || mission.completed) return;
 
     try {
-      const res = await fetch(`/api/plans/${plan._id}/missions/${mission.missionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "complete" }),
+      const res = await updateMissionMutation.mutateAsync({
+        planId: plan._id,
+        missionId: mission.missionId,
+        action: "complete",
       });
 
-      const json = await res.json();
-      if (json.success) {
-        setPlan(json.data.plan);
-        if (json.data.alreadyCompleted) {
-          toast({
-            type: "info",
-            title: "Already Completed",
-            message: "This mission was already completed previously.",
-          });
-        } else {
-          toast({
-            type: "success",
-            title: "Mission Completed!",
-            message: `Awesome! You earned +${json.data.xpEarned} Clean Air XP.`,
-          });
-        }
-      }
-    } catch (err) {
+      toast({
+        type: "success",
+        title: "Mission Completed!",
+        message: `Awesome! You earned +${res.xpAwarded} Clean Air XP.`,
+      });
+    } catch (err: any) {
       toast({
         type: "error",
         title: "Update Failed",
-        message: "Failed to update mission status.",
+        message: err.message || "Failed to update mission status.",
       });
     }
   };
@@ -188,26 +113,22 @@ export default function MyDayPage() {
     if (!plan) return;
 
     try {
-      const res = await fetch(`/api/plans/${plan._id}/missions/${mission.missionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "skip" }),
+      await updateMissionMutation.mutateAsync({
+        planId: plan._id,
+        missionId: mission.missionId,
+        action: "skip",
       });
 
-      const json = await res.json();
-      if (json.success) {
-        setPlan(json.data.plan);
-        toast({
-          type: "info",
-          title: "Mission Skipped",
-          message: `"${mission.title}" marked as skipped for today.`,
-        });
-      }
-    } catch (err) {
+      toast({
+        type: "info",
+        title: "Mission Skipped",
+        message: `"${mission.title}" marked as skipped for today.`,
+      });
+    } catch (err: any) {
       toast({
         type: "error",
         title: "Error",
-        message: "Could not skip mission.",
+        message: err.message || "Could not skip mission.",
       });
     }
   };
@@ -216,30 +137,24 @@ export default function MyDayPage() {
     if (!plan || !rescheduleMission) return;
 
     try {
-      const res = await fetch(`/api/plans/${plan._id}/missions/${rescheduleMission.missionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "reschedule",
-          rescheduledTime: newRescheduledTime,
-        }),
+      await updateMissionMutation.mutateAsync({
+        planId: plan._id,
+        missionId: rescheduleMission.missionId,
+        action: "reschedule",
+        rescheduledTime: newRescheduledTime,
       });
 
-      const json = await res.json();
-      if (json.success) {
-        setPlan(json.data.plan);
-        toast({
-          type: "success",
-          title: "Mission Rescheduled",
-          message: `Moved to ${newRescheduledTime}.`,
-        });
-        setRescheduleMission(null);
-      }
-    } catch (err) {
+      toast({
+        type: "success",
+        title: "Mission Rescheduled",
+        message: `Moved to ${newRescheduledTime}.`,
+      });
+      setRescheduleMission(null);
+    } catch (err: any) {
       toast({
         type: "error",
         title: "Error",
-        message: "Failed to reschedule mission.",
+        message: err.message || "Failed to reschedule mission.",
       });
     }
   };
@@ -279,12 +194,12 @@ export default function MyDayPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={isRegenerating || isLoading}
+              disabled={generatePlanMutation.isPending || isLoading}
               onClick={handleRegenerate}
               className="gap-2 font-bold border-brand-mint-300 text-brand-forest-800 hover:bg-[#F0FAF5] shadow-xs"
             >
-              <RotateCw className={cn("h-4 w-4", isRegenerating && "animate-spin")} />
-              <span>{isRegenerating ? "Regenerating..." : "Regenerate Plan"}</span>
+              <RotateCw className={cn("h-4 w-4", generatePlanMutation.isPending && "animate-spin")} />
+              <span>{generatePlanMutation.isPending ? "Regenerating..." : "Regenerate Plan"}</span>
             </Button>
           </div>
         </div>

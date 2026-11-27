@@ -19,20 +19,28 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, CalendarCheck, RefreshCw, Radio, Database, AlertCircle } from "lucide-react";
 import { PageTitle, Subtitle } from "@/components/ui/typography";
 import { useAqi } from "@/hooks/use-aqi";
+import {
+  useTodayPlanQuery,
+  useUpdateMissionMutation,
+  useGamificationOverviewQuery,
+  useUserProfileQuery,
+} from "@/hooks/use-airaware-api";
+import { useToast } from "@/components/ui/toast";
 
 export default function HomePage() {
   const { currentLocation, activeFamilyMember } = useShell();
+  const { toast } = useToast();
 
   // Connect to live backend AQI Route Handlers with coordinates from active location
   const {
     currentAqi,
     forecastAqi,
-    isLoading,
-    isError,
-    errorMessage,
+    isLoading: aqiLoading,
+    isError: aqiError,
+    errorMessage: aqiErrorMessage,
     isDemoMode,
     toggleDemoMode,
-    refetch,
+    refetch: refetchAqi,
   } = useAqi({
     latitude: currentLocation.latitude ?? 28.6139,
     longitude: currentLocation.longitude ?? 77.209,
@@ -40,9 +48,69 @@ export default function HomePage() {
     initialDemo: false,
   });
 
+  // Connect to real backend daily plan
+  const {
+    data: todayPlan,
+    isLoading: planLoading,
+    refetch: refetchPlan,
+  } = useTodayPlanQuery();
+
+  // Connect to real backend gamification data
+  const {
+    data: gamification,
+    isLoading: gamificationLoading,
+    refetch: refetchGamification,
+  } = useGamificationOverviewQuery();
+
+  // Connect to real user profile
+  const { data: userProfile } = useUserProfileQuery();
+
+  // Mutation for mission completions
+  const updateMissionMutation = useUpdateMissionMutation();
+
+  const handleToggleMission = async (missionId: string, currentCompleted: boolean) => {
+    if (!todayPlan?._id) return;
+    const action = currentCompleted ? "reschedule" : "complete";
+    try {
+      const res = await updateMissionMutation.mutateAsync({
+        planId: todayPlan._id,
+        missionId,
+        action,
+      });
+      if (action === "complete") {
+        toast({
+          type: "success",
+          title: `Mission Completed! +${res.xpAwarded} XP`,
+          message: res.message || "Great clean air defense action!",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        type: "error",
+        title: "Action Failed",
+        message: err.message || "Could not update mission.",
+      });
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    await Promise.all([refetchAqi(), refetchPlan(), refetchGamification()]);
+    toast({
+      type: "info",
+      title: "Data Refreshed",
+      message: "Air quality, schedule, and clean air stats are up to date.",
+    });
+  };
+
   // Effective AQI from live API or fallback
   const aqiValue = currentAqi?.indianAqi ?? 105;
   const isSevere = aqiValue > 150;
+
+  // Real user display names
+  const userName = userProfile?.user?.name || "Rohit";
+  const greetingTitle = userProfile?.user?.name
+    ? `${userProfile.user.name} & Family`
+    : "Rohit & The Sharma Family";
 
   return (
     <AppShell>
@@ -91,22 +159,22 @@ export default function HomePage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
+              onClick={handleRefreshAll}
+              disabled={aqiLoading || planLoading}
               className="text-xs h-8 px-2 text-brand-forest-700 hover:text-brand-forest-900"
-              title="Refresh air quality metrics"
+              title="Refresh all dashboard metrics"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${aqiLoading ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
 
         {/* Error Fallback Banner if API unreachable */}
-        {isError && (
+        {aqiError && (
           <div className="flex items-center gap-3 rounded-2xl bg-rose-50 p-4 border border-rose-200 text-rose-900 text-xs">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
             <div className="flex-1">
-              <strong>Live Air Quality Service Notice:</strong> {errorMessage}. Switched to local resilient cache.
+              <strong>Live Air Quality Service Notice:</strong> {aqiErrorMessage}. Switched to local resilient cache.
             </div>
           </div>
         )}
@@ -131,7 +199,7 @@ export default function HomePage() {
             <PageTitle className="mt-1.5 text-2xl sm:text-3xl lg:text-4xl">
               Good morning,{" "}
               <span className="bg-gradient-to-r from-brand-forest-800 via-brand-forest-900 to-emerald-800 bg-clip-text text-transparent">
-                Rohit & The Sharma Family
+                {greetingTitle}
               </span>
             </PageTitle>
 
@@ -157,12 +225,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 15. Quick Action Buttons */}
+        {/* Quick Action Buttons */}
         <QuickActions />
 
         {/* Main Hero Grid: Large AQI Gauge (Left) + Aero AI Coach & Missions (Right) */}
         <div className="grid gap-6 lg:grid-cols-12 items-start">
-          {/* Left Column: 2, 3, 4. Location, Current AQI, Large Gauge, Category & Health Guidance */}
+          {/* Left Column: Location, Current AQI, Large Gauge, Category & Health Guidance */}
           <div className="lg:col-span-7 space-y-6">
             <HeroAqiGauge
               aqi={aqiValue}
@@ -178,7 +246,7 @@ export default function HomePage() {
               onToggleDemo={toggleDemoMode}
             />
 
-            {/* 5. Pollutant Summary (PM2.5, PM10, NO2, O3, SO2, CO) */}
+            {/* Pollutant Summary (PM2.5, PM10, NO2, O3, SO2, CO) */}
             <PollutantSummaryCard
               pm25={currentAqi?.pollutants.pm25 ?? 59}
               pm10={currentAqi?.pollutants.pm10 ?? 60}
@@ -190,33 +258,35 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Right Column: 7, 8, 9, 10, 11. Aero Mascot, Daily Missions, XP, Level, Streak */}
+          {/* Right Column: Aero Mascot, Daily Missions, Real XP, Level, Streak */}
           <div className="lg:col-span-5 space-y-6">
-            {/* 7. Aero Mascot with context-aware expressions */}
             <AeroCoachCard
               aqi={aqiValue}
-              userName="Rohit"
+              userName={userName}
               activeMemberName={activeFamilyMember.name}
             />
 
-            {/* 8, 9, 10, 11. Gamification Widget (Level 4, 340/500 XP, 7-Day Streak, Daily Missions) */}
             <DailyMissionsWidget
-              currentXp={340}
-              maxXp={500}
-              level={4}
-              levelTitle="Clean Air Guardian"
-              streakDays={7}
+              planId={todayPlan?._id}
+              missions={todayPlan?.missions}
+              currentXp={gamification?.totalXp ?? 340}
+              maxXp={gamification?.level?.maxXp ?? 500}
+              level={gamification?.level?.current ?? 4}
+              levelTitle={gamification?.level?.title ?? "Clean Air Guardian"}
+              streakDays={gamification?.streak?.currentStreak ?? 7}
+              onToggleMission={handleToggleMission}
+              isLoading={planLoading || gamificationLoading}
             />
           </div>
         </div>
 
-        {/* 6. Weather Summary & Atmospheric Dispersion */}
+        {/* Weather Summary & Atmospheric Dispersion */}
         <WeatherWidget weather={currentAqi?.weather} />
 
-        {/* 13. Hourly AQI Chart (Diurnal Inversion Curve with Live Forecast) */}
+        {/* Hourly AQI Chart (Diurnal Inversion Curve with Live Forecast) */}
         <HourlyAqiChart hourly={forecastAqi?.hourly} />
 
-        {/* Bottom Grid: 14. Forecast Preview & 12. AI-Generated Daily Tip */}
+        {/* Bottom Grid: Forecast Preview & Gemini AI Daily Tip */}
         <div className="grid gap-6 lg:grid-cols-12 items-start">
           <div className="lg:col-span-7">
             <ForecastPreview daily={forecastAqi?.daily} />

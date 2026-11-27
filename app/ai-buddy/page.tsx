@@ -34,29 +34,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-interface ChatMessage {
-  id: string;
-  sender: "user" | "buddy";
-  text: string;
-  timestamp: string;
-  safetyWarnings?: string[];
-  actionableTips?: string[];
-  dataSource?: string;
-  dataTimestamp?: string;
-  disclaimer?: string;
-}
+import { apiClient } from "@/lib/api-client";
+import type { ChatMessageDto, ChatSessionSummary } from "@/types/api";
 
-interface SavedSession {
-  _id: string;
-  title: string;
-  persona: string;
-  sessionMetadata: {
-    initialAqi?: number;
-    city: string;
-    messageCount: number;
-  };
-  updatedAt: string;
-}
+type ChatMessage = ChatMessageDto;
+type SavedSession = ChatSessionSummary;
 
 const DEFAULT_SUGGESTED_PROMPTS = [
   "Can my child play outside today?",
@@ -122,15 +104,13 @@ export default function AiBuddyPage() {
     let isMounted = true;
     async function fetchChatHistory() {
       try {
-        const res = await fetch("/api/ai/chat");
-        if (!res.ok) return;
-        const json = await res.json();
-        if (json.success && isMounted) {
-          if (json.data.sessions) {
-            setSavedSessions(json.data.sessions);
+        const data = await apiClient.ai.getChatSessions();
+        if (isMounted) {
+          if (data.sessions) {
+            setSavedSessions(data.sessions);
           }
-          if (json.data.activeSession && json.data.activeSession.messages?.length > 0) {
-            const active = json.data.activeSession;
+          if (data.activeSession && data.activeSession.messages?.length > 0) {
+            const active = data.activeSession;
             setActiveSessionId(active._id);
             const loadedMessages: ChatMessage[] = active.messages.map((m: any) => ({
               id: m.messageId || String(Date.now()),
@@ -175,43 +155,32 @@ export default function AiBuddyPage() {
         content: m.text,
       }));
 
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: text,
-          sessionId: activeSessionId,
-          history: historyPayload,
-          context: {
-            currentAqi: currentLocation.aqi,
-            category: aqiTheme.label,
-            userLocation: {
-              city: currentLocation.city,
-              area: currentLocation.area,
-            },
-            householdProfile: {
-              sensitivePreferences: {
-                hasRespiratorySensitivity:
-                  activeFamilyMember.vulnerability === "critical" ||
-                  Boolean(activeFamilyMember.condition?.toLowerCase().includes("asthma")),
-                hasCardiovascularSensitivity:
-                  activeFamilyMember.vulnerability === "high" ||
-                  Boolean(activeFamilyMember.condition?.toLowerCase().includes("cardiac")),
-                isPregnant: activeFamilyMember.role.toLowerCase().includes("pregnant"),
-                hasInfant: activeFamilyMember.ageGroup === "infant",
-              },
+      const data = await apiClient.ai.chat({
+        prompt: text,
+        sessionId: activeSessionId,
+        history: historyPayload,
+        context: {
+          currentAqi: currentLocation.aqi,
+          category: aqiTheme.label,
+          userLocation: {
+            city: currentLocation.city,
+            area: currentLocation.area,
+          },
+          householdProfile: {
+            sensitivePreferences: {
+              hasRespiratorySensitivity:
+                activeFamilyMember.vulnerability === "critical" ||
+                Boolean(activeFamilyMember.condition?.toLowerCase().includes("asthma")),
+              hasCardiovascularSensitivity:
+                activeFamilyMember.vulnerability === "high" ||
+                Boolean(activeFamilyMember.condition?.toLowerCase().includes("cardiac")),
+              isPregnant: activeFamilyMember.role.toLowerCase().includes("pregnant"),
+              hasInfant: activeFamilyMember.ageGroup === "infant",
             },
           },
-        }),
+        },
       });
 
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        throw new Error(json.error?.message || "Aero could not generate a response. Please retry.");
-      }
-
-      const data = json.data;
       if (data.sessionId) {
         setActiveSessionId(data.sessionId);
       }
@@ -230,8 +199,8 @@ export default function AiBuddyPage() {
 
       setMessages((prev) => [...prev, buddyMsg]);
 
-      if (data.quickSuggestions && data.quickSuggestions.length > 0) {
-        setSuggestedPrompts(data.quickSuggestions);
+      if ((data as any).quickSuggestions && (data as any).quickSuggestions.length > 0) {
+        setSuggestedPrompts((data as any).quickSuggestions);
       }
     } catch (err: any) {
       console.error("AI Buddy error:", err);
