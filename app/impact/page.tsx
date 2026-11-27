@@ -38,6 +38,11 @@ import {
   useGamificationOverviewQuery,
   useLogImpactActionMutation,
 } from "@/hooks/use-airaware-api";
+import { LevelUpModal } from "@/components/gamification/level-up-modal";
+import { StreakModal } from "@/components/gamification/streak-modal";
+import { BadgeUnlockModal } from "@/components/gamification/badge-unlock-modal";
+import { XpRewardFloater, type XpFloatEvent } from "@/components/gamification/xp-reward-floater";
+import { AchievementGallery } from "@/components/gamification/achievement-gallery";
 
 export default function ImpactPage() {
   const { toast } = useToast();
@@ -57,6 +62,21 @@ export default function ImpactPage() {
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // Celebration Modals state
+  const [levelUpModalOpen, setLevelUpModalOpen] = useState(false);
+  const [streakModalOpen, setStreakModalOpen] = useState(false);
+  const [badgeModalBadge, setBadgeModalBadge] = useState<any | null>(null);
+  const [xpEvents, setXpEvents] = useState<XpFloatEvent[]>([]);
+
+  const triggerXpFloat = (amount: number, label: string) => {
+    const newEvent: XpFloatEvent = {
+      id: `${Date.now()}-${Math.random()}`,
+      amount,
+      label,
+    };
+    setXpEvents((prev) => [...prev, newEvent]);
+  };
+
   const fetchDashboardData = useCallback(async (_isRefresh?: boolean) => {
     await refetchDashboard();
   }, [refetchDashboard]);
@@ -70,6 +90,8 @@ export default function ImpactPage() {
         missionId,
         customTitle,
       });
+
+      triggerXpFloat(res.xpEarned, customTitle || "Verified Action");
 
       toast({
         type: "success",
@@ -193,8 +215,12 @@ export default function ImpactPage() {
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
             {/* Level & Mascot Intro */}
-            <div className="flex items-center gap-4 sm:gap-5">
-              <div className="relative">
+            <div
+              onClick={() => setLevelUpModalOpen(true)}
+              className="flex items-center gap-4 sm:gap-5 cursor-pointer group"
+              title="Click to view Level-Up Perks Celebration"
+            >
+              <div className="relative group-hover:scale-105 transition-transform">
                 <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-3xl bg-white border-2 border-amber-300 shadow-md text-3xl sm:text-4xl">
                   {level.icon || "🏰"}
                 </div>
@@ -205,9 +231,10 @@ export default function ImpactPage() {
 
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black text-brand-forest-900">
+                  <h2 className="text-xl sm:text-2xl font-black text-brand-forest-900 group-hover:text-amber-800 transition-colors">
                     Level {level.current}: {level.title}
                   </h2>
+                  <Sparkles className="h-4 w-4 text-amber-500 opacity-80 group-hover:opacity-100" />
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-brand-forest-800/80 mt-0.5">
                   Unlocked Perk: <span className="font-bold text-amber-900">{level.perk}</span>
@@ -222,17 +249,27 @@ export default function ImpactPage() {
                   </span>
                 </div>
               </div>
+
+              <div className="hidden sm:block shrink-0 ml-2">
+                <AeroMascot mood="level_up" size="sm" />
+              </div>
             </div>
 
             {/* Streak & Freeze Status Box */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-2xl border border-brand-yellow-300/80 backdrop-blur-xs shadow-xs">
+            <div
+              onClick={() => setStreakModalOpen(true)}
+              className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-2xl border border-brand-yellow-300/80 backdrop-blur-xs shadow-xs cursor-pointer group hover:border-amber-400 transition-all"
+              title="Click to view Streak Celebration"
+            >
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 text-2xl font-black">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 text-2xl font-black group-hover:scale-110 transition-transform">
                   🔥
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-2xl font-black text-brand-forest-900">{streak.currentStreak}</span>
+                    <span className="text-2xl font-black text-brand-forest-900 group-hover:text-amber-700 transition-colors">
+                      {streak.currentStreak}
+                    </span>
                     <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Days</span>
                   </div>
                   <p className="text-[11px] font-semibold text-brand-forest-700/80">Active Protection Streak</p>
@@ -636,9 +673,9 @@ export default function ImpactPage() {
               {filteredBadges.map((b) => (
                 <Card
                   key={b.id}
-                  onClick={() => setSelectedBadge(b)}
+                  onClick={() => setBadgeModalBadge(b)}
                   className={cn(
-                    "p-5 border-2 transition-all cursor-pointer hover:shadow-card-hover",
+                    "p-5 border-2 transition-all cursor-pointer hover:shadow-card-hover group",
                     b.earned
                       ? "bg-white border-brand-mint-300 shadow-card"
                       : "bg-slate-50/70 border-slate-200 opacity-65"
@@ -703,46 +740,34 @@ export default function ImpactPage() {
               ))}
             </div>
 
-            {/* Multi-Step Achievements Section */}
-            <div className="space-y-4 pt-6 border-t border-slate-200">
-              <div>
-                <SectionTitle>Tiered Habit Achievements</SectionTitle>
+            {/* Categorized Multi-Step Achievements Gallery */}
+            <div className="pt-6 border-t border-slate-200">
+              <div className="mb-4">
+                <SectionTitle>Tiered Habit Achievements Gallery</SectionTitle>
                 <p className="text-xs text-brand-forest-700/80">
-                  Long-term family goals that compound into lifelong clean-air mastery.
+                  Long-term family goals that compound into lifelong clean-air mastery across habits, sanctuary, and transit.
                 </p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {achievements.map((ach) => (
-                  <Card key={ach.id} className="p-5 border-2 border-brand-forest-700/10 shadow-xs bg-white space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-forest-50 text-brand-forest-800 font-black text-sm">
-                          🎯
-                        </span>
-                        <div>
-                          <h4 className="text-sm font-bold text-brand-forest-900">{ach.title}</h4>
-                          <p className="text-[11px] text-brand-forest-700/80">{ach.target}</p>
-                        </div>
-                      </div>
-
-                      <span className="text-xs font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
-                        {ach.progress}%
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-brand-forest-800/80 leading-relaxed">{ach.description}</p>
-
-                    <div className="space-y-1">
-                      <ProgressBar
-                        value={ach.progress}
-                        variant={ach.progress === 100 ? "forest" : "yellow"}
-                        showValue={false}
-                      />
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <AchievementGallery
+                achievements={
+                  achievements && achievements.length > 0
+                    ? achievements.map((a, idx) => ({
+                        ...a,
+                        category: (["habit", "sanctuary", "transit", "community"] as const)[idx % 4],
+                        xpReward: a.progress === 100 ? 100 : 150,
+                      }))
+                    : undefined
+                }
+                onSelectAchievement={(ach) => {
+                  toast({
+                    type: "info",
+                    title: ach.title,
+                    message: `${ach.description} (${ach.progress}% complete)`,
+                  });
+                }}
+                outdoorAqi={185}
+              />
             </div>
           </div>
         )}
@@ -750,6 +775,17 @@ export default function ImpactPage() {
         {/* Tab 3: Household Challenges */}
         {activeTab === "challenges" && (
           <div className="space-y-6">
+            {/* Ethical Safety Guardrail */}
+            <div className="rounded-2xl bg-emerald-50 border-2 border-emerald-200/80 p-4 text-xs text-emerald-950 flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-extrabold text-emerald-900 block">Health First Guarantee:</strong>
+                <p className="leading-relaxed text-emerald-900/90 mt-0.5">
+                  AirAware strictly prohibits and never gamifies risky outdoor exertion during high pollution episodes. Complete challenges through indoor air filtration, clean routes, and family protection habits!
+                </p>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <SectionTitle>Active Household Challenges</SectionTitle>
@@ -1054,6 +1090,34 @@ export default function ImpactPage() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Celebration Modals & XP Floater */}
+        <LevelUpModal
+          open={levelUpModalOpen}
+          onOpenChange={setLevelUpModalOpen}
+          newLevel={level.current}
+          levelTitle={level.title}
+          perkDescription={level.perk}
+          icon={level.icon}
+        />
+
+        <StreakModal
+          open={streakModalOpen}
+          onOpenChange={setStreakModalOpen}
+          streakDays={streak.currentStreak}
+          bonusXp={35}
+        />
+
+        <BadgeUnlockModal
+          open={Boolean(badgeModalBadge)}
+          onOpenChange={(open) => !open && setBadgeModalBadge(null)}
+          badge={badgeModalBadge}
+        />
+
+        <XpRewardFloater
+          events={xpEvents}
+          onDismiss={(id) => setXpEvents((prev) => prev.filter((e) => e.id !== id))}
+        />
       </div>
     </AppShell>
   );

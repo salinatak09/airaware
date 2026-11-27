@@ -257,12 +257,13 @@ export default function AiBuddyPage() {
     }
   };
 
-  const aeroMood: AeroMood =
-    currentLocation.aqi > 200
-      ? "household"
-      : currentLocation.aqi > 100
-      ? "lifestyle"
-      : "welcome";
+  const aeroMood: AeroMood = isLoading
+    ? "advising"
+    : currentLocation.aqi > 200
+    ? "concerned"
+    : currentLocation.aqi > 150
+    ? "masked"
+    : "happy";
 
   return (
     <AppShell>

@@ -25,8 +25,8 @@ export function AeroCoachCard({
   const getCoachSpeech = () => {
     if (aqi > 200) {
       return {
-        mood: "household" as AeroMood,
-        greeting: "Alert Mode Active!",
+        mood: "concerned" as AeroMood,
+        greeting: "Hazard Alert Active!",
         tip: `${userName}, particulate levels are hazardous today (AQI ${aqi}). Keep all bedroom HEPA purifiers running and keep ${activeMemberName} indoors until afternoon dispersion.`,
         actionText: "Check Pediatric Guide",
         actionHref: "/ai-buddy",
@@ -34,25 +34,25 @@ export function AeroCoachCard({
     }
     if (aqi > 150) {
       return {
-        mood: "household" as AeroMood,
-        greeting: "Cautionary Smog Advisory",
-        tip: `${userName}, morning smog is thick (AQI ${aqi}). Pack ${activeMemberName}'s N95 mask for school. The safest window for outdoor play is 2:00 PM – 4:30 PM!`,
+        mood: "masked" as AeroMood,
+        greeting: "N95 Protection Recommended",
+        tip: `${userName}, morning smog is thick (AQI ${aqi}). Pack ${activeMemberName}'s N95 respirator for school. The safest diurnal window for ventilation is 2:00 PM – 4:30 PM!`,
         actionText: "View 2 PM Safe Window",
         actionHref: "/my-day",
       };
     }
     if (aqi > 100) {
       return {
-        mood: "lifestyle" as AeroMood,
-        greeting: "Moderate Air Alert",
+        mood: "advising" as AeroMood,
+        greeting: "Moderate Air Advisory",
         tip: `Air is moderately hazy (AQI ${aqi}). Sensitive family members should take brief breaks during prolonged outdoor play.`,
         actionText: "Plan Day",
         actionHref: "/my-day",
       };
     }
     return {
-      mood: "welcome" as AeroMood,
-      greeting: "Fresh Air Day!",
+      mood: "happy" as AeroMood,
+      greeting: "Fresh Clean Air Day!",
       tip: `Air quality is great today (AQI ${aqi}). Wonderful time to open diagonal windows and enjoy outdoor sports with ${activeMemberName}!`,
       actionText: "Open Sanctuaries Map",
       actionHref: "/explore",
@@ -98,9 +98,9 @@ export function AeroCoachCard({
               </Button>
             </Link>
             <Link href="/ai-buddy">
-              <Button size="sm" variant="soft" className="font-bold gap-1.5 text-xs">
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span>Chat with Aero</span>
+              <Button size="sm" variant="outline" className="font-bold gap-1.5 text-xs border-brand-forest-700/20">
+                <MessageCircle className="h-3.5 w-3.5 text-brand-forest-800" />
+                <span>Ask Aero</span>
               </Button>
             </Link>
           </div>

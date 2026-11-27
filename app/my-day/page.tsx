@@ -31,6 +31,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+import { AeroMascot } from "@/components/onboarding/aero-mascot";
+import { XpRewardFloater, type XpFloatEvent } from "@/components/gamification/xp-reward-floater";
+import { ConfettiBurst } from "@/components/gamification/confetti-burst";
 import {
   useTodayPlanQuery,
   useGeneratePlanMutation,
@@ -46,6 +49,8 @@ export default function MyDayPage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState<"all" | "active" | "completed">("all");
+  const [xpEvents, setXpEvents] = React.useState<XpFloatEvent[]>([]);
+  const [showConfetti, setShowConfetti] = React.useState(false);
 
   // TanStack Query integration
   const {
@@ -95,10 +100,20 @@ export default function MyDayPage() {
         action: "complete",
       });
 
+      const earned = res.xpAwarded || mission.xpReward;
+      setXpEvents((prev) => [
+        ...prev,
+        { id: `${Date.now()}-${Math.random()}`, amount: earned, label: mission.title },
+      ]);
+
+      if (completedMissions.length + 1 >= totalMissions) {
+        setShowConfetti(true);
+      }
+
       toast({
         type: "success",
         title: "Mission Completed!",
-        message: `Awesome! You earned +${res.xpAwarded} Clean Air XP.`,
+        message: `Awesome! You earned +${earned} Clean Air XP.`,
       });
     } catch (err: any) {
       toast({
@@ -339,13 +354,20 @@ export default function MyDayPage() {
             <p className="text-sm font-bold">Compiling your personalized clean air timeline...</p>
           </div>
         ) : displayedMissions.length === 0 ? (
-          <div className="rounded-3xl border-2 border-dashed border-brand-mint-200 p-12 text-center text-brand-forest-700 space-y-2">
-            <CheckCircle2 className="h-8 w-8 mx-auto text-brand-forest-600" />
-            <p className="font-bold text-sm">No actions in this view.</p>
-            <p className="text-xs text-brand-forest-700/70">
+          <div className="rounded-3xl border-2 border-dashed border-brand-mint-200 p-8 sm:p-12 text-center text-brand-forest-700 flex flex-col items-center justify-center space-y-3 bg-[#F0FAF5]/40">
+            <AeroMascot
+              mood={activeTab === "completed" ? "mission_completed" : "celebrating"}
+              size="md"
+            />
+            <p className="font-extrabold text-base text-brand-forest-900">
               {activeTab === "completed"
-                ? "You haven't completed any missions yet today. Check off pending items below!"
-                : "All scheduled actions have been completed or skipped!"}
+                ? "No completed actions yet."
+                : "All scheduled actions have been completed! 🎉"}
+            </p>
+            <p className="text-xs text-brand-forest-700/80 max-w-sm">
+              {activeTab === "completed"
+                ? "Check off pending actions in the timeline to build your daily defense streak."
+                : "Aero is celebrating your family's commitment to clean air habits. Keep the streak hot!"}
             </p>
           </div>
         ) : (
@@ -578,6 +600,13 @@ export default function MyDayPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Celebration Confetti & Floating XP */}
+        <ConfettiBurst active={showConfetti} onComplete={() => setShowConfetti(false)} />
+        <XpRewardFloater
+          events={xpEvents}
+          onDismiss={(id) => setXpEvents((prev) => prev.filter((e) => e.id !== id))}
+        />
       </div>
     </AppShell>
   );

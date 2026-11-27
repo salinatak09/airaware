@@ -363,7 +363,7 @@ export default function IndoorAirPage() {
         {/* ========================================================= */}
         <section className="rounded-3xl border-2 border-brand-mint-300 bg-gradient-to-r from-brand-mint-50/80 via-white to-brand-cream/40 p-6 sm:p-7 shadow-card flex flex-col sm:flex-row items-center gap-6">
           <AeroMascot
-            mood="home"
+            mood="advising"
             size="md"
             showSpeechBubble={false}
             className="shrink-0"

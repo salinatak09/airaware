@@ -8,6 +8,9 @@ import { Flame, Trophy, Check, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { PlanMission } from "@/types/api";
+import { XpRewardFloater, type XpFloatEvent } from "@/components/gamification/xp-reward-floater";
+import { LevelUpModal } from "@/components/gamification/level-up-modal";
+import { StreakModal } from "@/components/gamification/streak-modal";
 
 export interface DailyMissionsWidgetProps {
   planId?: string;
@@ -91,11 +94,25 @@ export function DailyMissionsWidget({
   );
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
+  // Gamification Modals
+  const [showLevelUp, setShowLevelUp] = React.useState(false);
+  const [showStreak, setShowStreak] = React.useState(false);
+  const [xpEvents, setXpEvents] = React.useState<XpFloatEvent[]>([]);
+
   React.useEffect(() => {
     if (propMissions && propMissions.length > 0) {
       setLocalMissions(propMissions);
     }
   }, [propMissions]);
+
+  const triggerXpFloat = (amount: number, label: string) => {
+    const newEvent: XpFloatEvent = {
+      id: `${Date.now()}-${Math.random()}`,
+      amount,
+      label,
+    };
+    setXpEvents((prev) => [...prev, newEvent]);
+  };
 
   const handleToggle = async (mission: PlanMission) => {
     if (updatingId) return;
@@ -113,15 +130,10 @@ export function DailyMissionsWidget({
     try {
       if (onToggleMission) {
         await onToggleMission(mission.missionId, mission.completed);
-      } else {
-        // Fallback toast if standalone
-        if (nextCompleted) {
-          toast({
-            type: "success",
-            title: `Mission Completed! +${mission.xpReward} XP`,
-            message: `"${mission.title}" marked done. Keep the streak burning!`,
-          });
-        }
+      }
+
+      if (nextCompleted) {
+        triggerXpFloat(mission.xpReward, mission.title);
       }
     } catch (err: any) {
       // Revert optimistic update on failure
@@ -145,126 +157,160 @@ export function DailyMissionsWidget({
   const allCompleted = activeMissions.length > 0 && activeMissions.every((m) => m.completed);
 
   return (
-    <Card
-      className={cn(
-        "p-6 bg-white border-2 border-brand-forest-700/10 shadow-card flex flex-col justify-between",
-        className
-      )}
-    >
-      <div>
-        {/* Header Strip with Streak and Level */}
-        <div className="flex items-center justify-between pb-4 border-b border-brand-mint-100">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 font-black text-sm">
-              <Flame className="h-5 w-5 fill-amber-500 text-amber-500" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-extrabold text-brand-forest-900">
-                  {streakDays} Day Streak!
-                </span>
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded px-1.5 py-0.2">
-                  HOT
+    <>
+      {/* Floating XP Rewards */}
+      <XpRewardFloater
+        events={xpEvents}
+        onDismiss={(id) => setXpEvents((prev) => prev.filter((e) => e.id !== id))}
+      />
+
+      {/* Level-Up Modal */}
+      <LevelUpModal
+        open={showLevelUp}
+        onOpenChange={setShowLevelUp}
+        newLevel={level}
+        levelTitle={levelTitle}
+        perkDescription="Unlocked advanced diurnal boundary alerts & custom CADR room shielding optimizer."
+      />
+
+      {/* Streak Modal */}
+      <StreakModal
+        open={showStreak}
+        onOpenChange={setShowStreak}
+        streakDays={streakDays}
+        bonusXp={35}
+      />
+
+      <Card
+        className={cn(
+          "p-6 bg-white border-2 border-brand-forest-700/10 shadow-card flex flex-col justify-between",
+          className
+        )}
+      >
+        <div>
+          {/* Header Strip with Streak and Level */}
+          <div className="flex items-center justify-between pb-4 border-b border-brand-mint-100">
+            <div
+              onClick={() => setShowStreak(true)}
+              className="flex items-center gap-2 cursor-pointer group"
+              title="Click to view streak celebration details"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 font-black text-sm group-hover:scale-105 transition-transform">
+                <Flame className="h-5 w-5 fill-amber-500 text-amber-500" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-extrabold text-brand-forest-900 group-hover:text-amber-700 transition-colors">
+                    {streakDays} Day Streak!
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded px-1.5 py-0.2">
+                    HOT
+                  </span>
+                </div>
+                <span className="text-xs text-brand-forest-700/60 font-semibold">
+                  Level {level}: {levelTitle}
                 </span>
               </div>
-              <span className="text-xs text-brand-forest-700/60 font-semibold">
-                Level {level}: {levelTitle}
-              </span>
             </div>
+
+            <Badge
+              variant="yellow"
+              onClick={() => setShowLevelUp(true)}
+              className="text-xs font-bold gap-1 cursor-pointer hover:bg-amber-200 transition-colors"
+              title="Click to view Level Progress"
+            >
+              <Trophy className="h-3.5 w-3.5" />
+              <span>
+                {currentXp} / {maxXp} XP
+              </span>
+            </Badge>
           </div>
 
-          <Badge variant="yellow" className="text-xs font-bold gap-1">
-            <Trophy className="h-3.5 w-3.5" />
-            <span>
-              {currentXp} / {maxXp} XP
-            </span>
-          </Badge>
-        </div>
-
-        {/* Level XP Progress Bar */}
-        <div className="mt-4 space-y-1.5">
-          <div className="flex justify-between text-xs font-bold text-brand-forest-800">
-            <span>Level {level} Progress</span>
-            <span>{Math.max(0, maxXp - currentXp)} XP to Level {level + 1}</span>
-          </div>
-          <ProgressBar value={progressPercent} variant="yellow" />
-        </div>
-
-        {/* Missions Checklist */}
-        <div className="mt-5 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-forest-800 block">
-              Today&apos;s Clean Air Missions
-            </span>
-            {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-forest-700/50" />}
+          {/* Level XP Progress Bar */}
+          <div className="mt-4 space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-brand-forest-800">
+              <span>Level {level} Progress</span>
+              <span>{Math.max(0, maxXp - currentXp)} XP to Level {level + 1}</span>
+            </div>
+            <ProgressBar value={progressPercent} variant="yellow" />
           </div>
 
-          <div className="space-y-2">
-            {activeMissions.map((m) => {
-              const isUpdating = updatingId === m.missionId;
-              return (
-                <div
-                  key={m.missionId}
-                  onClick={() => handleToggle(m)}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none",
-                    m.completed
-                      ? "bg-[#F0FAF5] border-brand-mint-300 text-brand-forest-900 shadow-xs"
-                      : "bg-white border-brand-forest-700/10 hover:border-brand-mint-200 hover:bg-slate-50",
-                    isUpdating && "opacity-60 pointer-events-none"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 transition-colors",
-                        m.completed
-                          ? "bg-brand-forest border-brand-forest text-white"
-                          : "border-brand-forest-700/30 bg-white"
-                      )}
-                    >
-                      {isUpdating ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-brand-forest-700" />
-                      ) : (
-                        m.completed && <Check className="h-3.5 w-3.5 stroke-[3]" />
-                      )}
-                    </div>
-                    <div>
-                      <span
+          {/* Missions Checklist */}
+          <div className="mt-5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-forest-800 block">
+                Today&apos;s Clean Air Missions
+              </span>
+              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-forest-700/50" />}
+            </div>
+
+            <div className="space-y-2">
+              {activeMissions.map((m) => {
+                const isUpdating = updatingId === m.missionId;
+                return (
+                  <div
+                    key={m.missionId}
+                    onClick={() => handleToggle(m)}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none",
+                      m.completed
+                        ? "bg-[#F0FAF5] border-brand-mint-300 text-brand-forest-900 shadow-xs"
+                        : "bg-white border-brand-forest-700/10 hover:border-brand-mint-200 hover:bg-slate-50",
+                      isUpdating && "opacity-60 pointer-events-none"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
                         className={cn(
-                          "text-xs font-bold block leading-tight",
-                          m.completed ? "line-through opacity-70" : "text-brand-forest-900"
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 transition-colors",
+                          m.completed
+                            ? "bg-brand-forest border-brand-forest text-white"
+                            : "border-brand-forest-700/30 bg-white"
                         )}
                       >
-                        {m.title}
-                      </span>
-                      <span className="text-[10px] text-brand-forest-700/60 font-medium capitalize">
-                        {m.time} • {m.category}
-                      </span>
+                        {isUpdating ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-brand-forest-700" />
+                        ) : (
+                          m.completed && <Check className="h-3.5 w-3.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <div>
+                        <span
+                          className={cn(
+                            "text-xs font-bold block leading-tight",
+                            m.completed ? "line-through opacity-70" : "text-brand-forest-900"
+                          )}
+                        >
+                          {m.title}
+                        </span>
+                        <span className="text-[10px] text-brand-forest-700/60 font-medium capitalize">
+                          {m.time} • {m.category}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <Badge
-                    variant={m.completed ? "mint" : "yellow"}
-                    className="text-[10px] font-bold shrink-0"
-                  >
-                    +{m.xpReward} XP
-                  </Badge>
-                </div>
-              );
-            })}
+                    <Badge
+                      variant={m.completed ? "mint" : "yellow"}
+                      className="text-[10px] font-bold shrink-0"
+                    >
+                      +{m.xpReward} XP
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-5 pt-3 border-t border-brand-mint-100 flex items-center justify-between text-[11px] text-brand-forest-700/70 font-semibold">
-        <span>
-          {allCompleted
-            ? "🎉 All daily missions completed! 2x streak active!"
-            : "Complete daily missions for streak bonuses"}
-        </span>
-        <Sparkles className="h-4 w-4 text-amber-500" />
-      </div>
-    </Card>
+        <div className="mt-5 pt-3 border-t border-brand-mint-100 flex items-center justify-between text-[11px] text-brand-forest-700/70 font-semibold">
+          <span>
+            {allCompleted
+              ? "🎉 All daily missions completed! 2x streak multiplier active!"
+              : "Complete daily missions to maintain streak & earn clean air XP"}
+          </span>
+          <Sparkles className="h-4 w-4 text-amber-500" />
+        </div>
+      </Card>
+    </>
   );
 }
