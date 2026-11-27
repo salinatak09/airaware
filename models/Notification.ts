@@ -1,21 +1,34 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export type NotificationType =
-  | "aqi_alert"
+  | "aqi_deterioration"
+  | "severe_aqi"
+  | "daily_reminder"
   | "mission_reminder"
+  | "streak_reminder"
+  | "forecast_alert"
+  | "community_update"
+  // Legacy aliases for backward compatibility
+  | "aqi_alert"
   | "streak_risk"
   | "achievement"
-  | "community_update"
   | "safety_advisory"
   | "system";
 
 export type NotificationPriority = "low" | "medium" | "high" | "urgent";
+export type NotificationSeverity = "info" | "warning" | "critical" | "success";
 
 export interface INotificationMetadata {
   aqi?: number;
+  previousAqi?: number;
   category?: string;
+  stationName?: string;
+  source?: string;
+  dataTimestamp?: string;
   actionUrl?: string;
+  actionLabel?: string;
   badgeId?: string;
+  missionId?: string;
   [key: string]: unknown;
 }
 
@@ -26,6 +39,7 @@ export interface INotification {
   title: string;
   message: string;
   priority: NotificationPriority;
+  severity: NotificationSeverity;
   isRead: boolean;
   readAt?: Date;
   metadata?: INotificationMetadata;
@@ -46,32 +60,43 @@ const NotificationSchema = new Schema<INotificationDocument>(
     type: {
       type: String,
       enum: [
-        "aqi_alert",
+        "aqi_deterioration",
+        "severe_aqi",
+        "daily_reminder",
         "mission_reminder",
+        "streak_reminder",
+        "forecast_alert",
+        "community_update",
+        "aqi_alert",
         "streak_risk",
         "achievement",
-        "community_update",
         "safety_advisory",
         "system",
       ],
       required: true,
+      index: true,
     },
     title: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 120,
+      maxlength: 140,
     },
     message: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 500,
+      maxlength: 600,
     },
     priority: {
       type: String,
       enum: ["low", "medium", "high", "urgent"],
       default: "medium",
+    },
+    severity: {
+      type: String,
+      enum: ["info", "warning", "critical", "success"],
+      default: "info",
     },
     isRead: {
       type: Boolean,

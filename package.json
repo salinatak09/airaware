@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --conditions=react-server --experimental-strip-types --test server/services/safety/safety-engine.test.ts server/services/ai/gemini.test.ts server/services/plan.service.test.ts server/services/indoor.service.test.ts server/services/explore.service.test.ts server/services/impact.service.test.ts server/services/community.service.test.ts",
+    "test": "node --conditions=react-server --experimental-strip-types --test server/services/safety/safety-engine.test.ts server/services/ai/gemini.test.ts server/services/plan.service.test.ts server/services/indoor.service.test.ts server/services/explore.service.test.ts server/services/impact.service.test.ts server/services/community.service.test.ts server/services/notification.service.test.ts",
     "seed": "node --env-file=.env.local --conditions=react-server --experimental-strip-types scripts/seed.ts"
   },
   "dependencies": {
