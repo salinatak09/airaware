@@ -8,6 +8,20 @@ export interface IFamilyMember {
   notes?: string;
 }
 
+export interface IUserPrivacySettings {
+  approximateLocationOnly: boolean;
+  anonymizeCommunityReports: boolean;
+  optOutAnalytics: boolean;
+  optOutHealthContext: boolean;
+}
+
+export interface IAIPersonalizationSettings {
+  enabled: boolean;
+  enableCommuteAdvice: boolean;
+  enableIndoorAdvice: boolean;
+  storeChatHistory: boolean;
+}
+
 export interface IUserPreferences {
   theme?: "light" | "dark" | "system";
   language?: string;
@@ -16,6 +30,9 @@ export interface IUserPreferences {
   aqiAlertThreshold?: number; // Alias for clarity
   temperatureUnit: "celsius" | "fahrenheit";
   aqiStandard?: "CPCB_NAQI" | "US_EPA";
+  distanceUnit?: "km" | "miles";
+  privacy?: IUserPrivacySettings;
+  aiPersonalization?: IAIPersonalizationSettings;
 }
 
 export interface IUserLocation {
@@ -30,12 +47,15 @@ export interface IUserLocation {
   latitude?: number;
   longitude?: number;
   timezone?: string;
+  isApproximate?: boolean;
 }
 
 export interface IUserData {
   _id?: string;
   name: string;
   email: string;
+  bio?: string;
+  phone?: string;
   authProvider?: "credentials" | "google" | "apple" | "anonymous";
   authProviderId?: string;
   passwordHash?: string;
@@ -95,6 +115,8 @@ const UserSchema = new Schema<IUserDocument>(
       trim: true,
       index: true,
     },
+    bio: { type: String, trim: true, maxlength: 250 },
+    phone: { type: String, trim: true, maxlength: 20 },
     authProvider: {
       type: String,
       enum: ["credentials", "google", "apple", "anonymous"],
@@ -129,6 +151,7 @@ const UserSchema = new Schema<IUserDocument>(
       latitude: { type: Number, default: 28.6139 },
       longitude: { type: Number, default: 77.209 },
       timezone: { type: String, default: "Asia/Kolkata" },
+      isApproximate: { type: Boolean, default: true },
     },
     homeLocation: {
       city: { type: String, default: "New Delhi" },
@@ -165,6 +188,23 @@ const UserSchema = new Schema<IUserDocument>(
         type: String,
         enum: ["CPCB_NAQI", "US_EPA"],
         default: "CPCB_NAQI",
+      },
+      distanceUnit: {
+        type: String,
+        enum: ["km", "miles"],
+        default: "km",
+      },
+      privacy: {
+        approximateLocationOnly: { type: Boolean, default: true },
+        anonymizeCommunityReports: { type: Boolean, default: false },
+        optOutAnalytics: { type: Boolean, default: false },
+        optOutHealthContext: { type: Boolean, default: false },
+      },
+      aiPersonalization: {
+        enabled: { type: Boolean, default: true },
+        enableCommuteAdvice: { type: Boolean, default: true },
+        enableIndoorAdvice: { type: Boolean, default: true },
+        storeChatHistory: { type: Boolean, default: true },
       },
     },
     onboardingComplete: {

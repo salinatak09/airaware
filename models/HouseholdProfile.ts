@@ -12,6 +12,7 @@ export interface ISensitiveGroupPreferences {
   hasCardiovascularSensitivity: boolean;
   isPregnant: boolean;
   hasInfant: boolean;
+  allergyTypes?: string[];
   notes?: string;
 }
 
@@ -19,12 +20,14 @@ export interface ILifestylePreferences {
   workSchedule: "fixed_office" | "hybrid" | "work_from_home" | "outdoor_work" | "student" | "retired";
   exerciseHabits: "outdoor_morning" | "outdoor_evening" | "indoor_gym" | "none" | "intermittent";
   outdoorActivityFrequency: "daily" | "weekends_only" | "occasional" | "rare";
+  preferredExerciseTime?: string;
 }
 
 export interface ICommutePreferences {
   commuteType: "car" | "metro" | "bus" | "two_wheeler" | "walking" | "bicycle" | "mixed";
   durationMinutes: number;
   travelWindow: "early_morning" | "morning_rush" | "midday" | "evening_rush" | "night";
+  vehicleHasAcAirFilter?: boolean;
 }
 
 export interface IHomeEnvironment {
@@ -33,6 +36,8 @@ export interface IHomeEnvironment {
   ventilationType: "natural" | "central_ac" | "split_ac" | "mixed";
   cookingFuel: "lpg" | "induction_electric" | "piped_gas" | "biomass";
   hasBalconyOrGarden: boolean;
+  hasKitchenChimney?: boolean;
+  cleanerAirRoomStatus?: string;
 }
 
 export interface IPurifierAvailability {
@@ -85,6 +90,7 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
       hasCardiovascularSensitivity: { type: Boolean, default: false },
       isPregnant: { type: Boolean, default: false },
       hasInfant: { type: Boolean, default: false },
+      allergyTypes: { type: [String], default: [] },
       notes: { type: String, maxlength: 200, trim: true },
     },
     lifestyle: {
@@ -103,6 +109,7 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
         enum: ["daily", "weekends_only", "occasional", "rare"],
         default: "occasional",
       },
+      preferredExerciseTime: { type: String, default: "evening" },
     },
     commute: {
       commuteType: {
@@ -116,6 +123,7 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
         enum: ["early_morning", "morning_rush", "midday", "evening_rush", "night"],
         default: "morning_rush",
       },
+      vehicleHasAcAirFilter: { type: Boolean, default: true },
     },
     homeEnvironment: {
       homeType: {
@@ -123,7 +131,7 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
         enum: ["apartment", "independent_house", "villa", "other"],
         default: "apartment",
       },
-      floorLevel: { type: Number, default: 2 },
+      floorLevel: { type: Number, default: 2, min: 0, max: 100 },
       ventilationType: {
         type: String,
         enum: ["natural", "central_ac", "split_ac", "mixed"],
@@ -134,21 +142,20 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
         enum: ["lpg", "induction_electric", "piped_gas", "biomass"],
         default: "piped_gas",
       },
-      hasBalconyOrGarden: { type: Boolean, default: false },
+      hasBalconyOrGarden: { type: Boolean, default: true },
+      hasKitchenChimney: { type: Boolean, default: true },
+      cleanerAirRoomStatus: { type: String, default: "master_bedroom" },
     },
     purifierAvailability: {
-      hasPurifier: { type: Boolean, default: false },
-      purifierCount: { type: Number, default: 0, min: 0 },
-      roomsWithPurifiers: {
-        type: [String],
-        default: [],
-      },
+      hasPurifier: { type: Boolean, default: true },
+      purifierCount: { type: Number, default: 1, min: 0 },
+      roomsWithPurifiers: { type: [String], default: ["master_bedroom"] },
       purifierType: {
         type: String,
         enum: ["hepa", "carbon_hepa", "diy", "none"],
-        default: "none",
+        default: "hepa",
       },
-      lastFilterChangeDate: { type: Date },
+      lastFilterChangeDate: { type: Date, default: Date.now },
     },
     budgetPreferences: {
       budgetRange: {
@@ -158,7 +165,7 @@ const HouseholdProfileSchema = new Schema<IHouseholdProfileDocument>(
       },
       improvementPriorities: {
         type: [String],
-        default: ["air_purifier", "plants", "weather_stripping"],
+        default: ["purifier_filters", "weatherstripping", "indoor_monitoring"],
       },
     },
   },

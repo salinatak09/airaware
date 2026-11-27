@@ -5,13 +5,23 @@ import { apiSuccess } from "@/server/utils/response";
 import { withApiHandler } from "@/server/middleware/with-api-handler";
 import { validateBody } from "@/server/utils/validation";
 import { connectToDatabase } from "@/server/db";
-import { User, HouseholdProfile, GamificationProfile } from "@/models";
+import {
+  User,
+  HouseholdProfile,
+  GamificationProfile,
+  DailyPlan,
+  UserAction,
+  ChatSession,
+  Notification,
+} from "@/models";
 import { NotFoundError } from "@/server/utils/errors";
 
 export const dynamic = "force-dynamic";
 
 const profilePayloadSchema = z.object({
   name: z.string().min(2).optional(),
+  bio: z.string().max(250).optional(),
+  phone: z.string().max(20).optional(),
   avatar: z.string().optional(),
   location: z
     .object({
@@ -22,6 +32,7 @@ const profilePayloadSchema = z.object({
       latitude: z.number().optional(),
       longitude: z.number().optional(),
       timezone: z.string().optional(),
+      isApproximate: z.boolean().optional(),
     })
     .optional(),
   preferences: z
@@ -32,6 +43,23 @@ const profilePayloadSchema = z.object({
       aqiThresholdAlert: z.number().optional(),
       temperatureUnit: z.enum(["celsius", "fahrenheit"]).optional(),
       aqiStandard: z.enum(["CPCB_NAQI", "US_EPA"]).optional(),
+      distanceUnit: z.enum(["km", "miles"]).optional(),
+      privacy: z
+        .object({
+          approximateLocationOnly: z.boolean().optional(),
+          anonymizeCommunityReports: z.boolean().optional(),
+          optOutAnalytics: z.boolean().optional(),
+          optOutHealthContext: z.boolean().optional(),
+        })
+        .optional(),
+      aiPersonalization: z
+        .object({
+          enabled: z.boolean().optional(),
+          enableCommuteAdvice: z.boolean().optional(),
+          enableIndoorAdvice: z.boolean().optional(),
+          storeChatHistory: z.boolean().optional(),
+        })
+        .optional(),
     })
     .optional(),
   familyMembers: z
@@ -61,6 +89,7 @@ const profilePayloadSchema = z.object({
           hasCardiovascularSensitivity: z.boolean().default(false),
           isPregnant: z.boolean().default(false),
           hasInfant: z.boolean().default(false),
+          allergyTypes: z.array(z.string()).optional(),
           notes: z.string().max(200).optional(),
         })
         .optional(),
@@ -69,6 +98,7 @@ const profilePayloadSchema = z.object({
           workSchedule: z.enum(["fixed_office", "hybrid", "work_from_home", "outdoor_work", "student", "retired"]).optional(),
           exerciseHabits: z.enum(["outdoor_morning", "outdoor_evening", "indoor_gym", "none", "intermittent"]).optional(),
           outdoorActivityFrequency: z.enum(["daily", "weekends_only", "occasional", "rare"]).optional(),
+          preferredExerciseTime: z.string().optional(),
         })
         .optional(),
       commute: z
@@ -76,6 +106,7 @@ const profilePayloadSchema = z.object({
           commuteType: z.enum(["car", "metro", "bus", "two_wheeler", "walking", "bicycle", "mixed"]).optional(),
           durationMinutes: z.number().min(0).max(240).optional(),
           travelWindow: z.enum(["early_morning", "morning_rush", "midday", "evening_rush", "night"]).optional(),
+          vehicleHasAcAirFilter: z.boolean().optional(),
         })
         .optional(),
       homeEnvironment: z
@@ -85,6 +116,8 @@ const profilePayloadSchema = z.object({
           ventilationType: z.enum(["natural", "central_ac", "split_ac", "mixed"]).optional(),
           cookingFuel: z.enum(["lpg", "induction_electric", "piped_gas", "biomass"]).optional(),
           hasBalconyOrGarden: z.boolean().optional(),
+          hasKitchenChimney: z.boolean().optional(),
+          cleanerAirRoomStatus: z.string().optional(),
         })
         .optional(),
       purifierAvailability: z
@@ -130,11 +163,14 @@ export const GET = withApiHandler(
           id: userDoc._id.toString(),
           name: userDoc.name,
           email: userDoc.email,
+          bio: userDoc.bio || "",
+          phone: userDoc.phone || "",
           avatar: userDoc.avatar,
           location: userDoc.location || userDoc.homeLocation,
           preferences: userDoc.preferences,
           familyMembers: userDoc.familyMembers || [],
           onboardingComplete: userDoc.onboardingComplete || false,
+          createdAt: userDoc.createdAt,
         },
         householdProfile: householdDoc || null,
         gamification: gamificationDoc
@@ -167,16 +203,19 @@ export const PUT = withApiHandler(
 
     // 1. Update User Document
     const userUpdates: Record<string, unknown> = {};
-    if (body.name) userUpdates.name = body.name;
-    if (body.avatar) userUpdates.avatar = body.avatar;
-    if (body.familyMembers) userUpdates.familyMembers = body.familyMembers;
+    if (body.name !== undefined) userUpdates.name = body.name;
+    if (body.bio !== undefined) userUpdates.bio = body.bio;
+    if (body.phone !== undefined) userUpdates.phone = body.phone;
+    if (body.avatar !== undefined) userUpdates.avatar = body.avatar;
+    if (body.familyMembers !== undefined) userUpdates.familyMembers = body.familyMembers;
 
     if (body.location) {
-      if (body.location.city) userUpdates["location.city"] = body.location.city;
-      if (body.location.area) userUpdates["location.area"] = body.location.area;
-      if (body.location.state) userUpdates["location.state"] = body.location.state;
-      if (body.location.country) userUpdates["location.country"] = body.location.country;
-      if (body.location.timezone) userUpdates["location.timezone"] = body.location.timezone;
+      if (body.location.city !== undefined) userUpdates["location.city"] = body.location.city;
+      if (body.location.area !== undefined) userUpdates["location.area"] = body.location.area;
+      if (body.location.state !== undefined) userUpdates["location.state"] = body.location.state;
+      if (body.location.country !== undefined) userUpdates["location.country"] = body.location.country;
+      if (body.location.timezone !== undefined) userUpdates["location.timezone"] = body.location.timezone;
+      if (body.location.isApproximate !== undefined) userUpdates["location.isApproximate"] = body.location.isApproximate;
       if (body.location.latitude !== undefined && body.location.longitude !== undefined) {
         userUpdates["location.latitude"] = body.location.latitude;
         userUpdates["location.longitude"] = body.location.longitude;
@@ -188,8 +227,8 @@ export const PUT = withApiHandler(
     }
 
     if (body.preferences) {
-      if (body.preferences.theme) userUpdates["preferences.theme"] = body.preferences.theme;
-      if (body.preferences.language) userUpdates["preferences.language"] = body.preferences.language;
+      if (body.preferences.theme !== undefined) userUpdates["preferences.theme"] = body.preferences.theme;
+      if (body.preferences.language !== undefined) userUpdates["preferences.language"] = body.preferences.language;
       if (body.preferences.notificationsEnabled !== undefined) {
         userUpdates["preferences.notificationsEnabled"] = body.preferences.notificationsEnabled;
       }
@@ -197,11 +236,20 @@ export const PUT = withApiHandler(
         userUpdates["preferences.aqiThresholdAlert"] = body.preferences.aqiThresholdAlert;
         userUpdates["preferences.aqiAlertThreshold"] = body.preferences.aqiThresholdAlert;
       }
-      if (body.preferences.temperatureUnit) {
+      if (body.preferences.temperatureUnit !== undefined) {
         userUpdates["preferences.temperatureUnit"] = body.preferences.temperatureUnit;
       }
-      if (body.preferences.aqiStandard) {
+      if (body.preferences.aqiStandard !== undefined) {
         userUpdates["preferences.aqiStandard"] = body.preferences.aqiStandard;
+      }
+      if (body.preferences.distanceUnit !== undefined) {
+        userUpdates["preferences.distanceUnit"] = body.preferences.distanceUnit;
+      }
+      if (body.preferences.privacy !== undefined) {
+        userUpdates["preferences.privacy"] = body.preferences.privacy;
+      }
+      if (body.preferences.aiPersonalization !== undefined) {
+        userUpdates["preferences.aiPersonalization"] = body.preferences.aiPersonalization;
       }
     }
 
@@ -233,14 +281,14 @@ export const PUT = withApiHandler(
         };
       }
 
-      if (hp.sensitiveGroupPreferences) {
+      if (hp.sensitiveGroupPreferences !== undefined) {
         hpUpdates.sensitiveGroupPreferences = hp.sensitiveGroupPreferences;
       }
-      if (hp.lifestyle) hpUpdates.lifestyle = hp.lifestyle;
-      if (hp.commute) hpUpdates.commute = hp.commute;
-      if (hp.homeEnvironment) hpUpdates.homeEnvironment = hp.homeEnvironment;
-      if (hp.purifierAvailability) hpUpdates.purifierAvailability = hp.purifierAvailability;
-      if (hp.budgetPreferences) hpUpdates.budgetPreferences = hp.budgetPreferences;
+      if (hp.lifestyle !== undefined) hpUpdates.lifestyle = hp.lifestyle;
+      if (hp.commute !== undefined) hpUpdates.commute = hp.commute;
+      if (hp.homeEnvironment !== undefined) hpUpdates.homeEnvironment = hp.homeEnvironment;
+      if (hp.purifierAvailability !== undefined) hpUpdates.purifierAvailability = hp.purifierAvailability;
+      if (hp.budgetPreferences !== undefined) hpUpdates.budgetPreferences = hp.budgetPreferences;
 
       updatedHousehold = await HouseholdProfile.findOneAndUpdate(
         { userId: user!.id },
@@ -257,6 +305,8 @@ export const PUT = withApiHandler(
           id: updatedUser._id.toString(),
           name: updatedUser.name,
           email: updatedUser.email,
+          bio: updatedUser.bio,
+          phone: updatedUser.phone,
           avatar: updatedUser.avatar,
           location: updatedUser.location,
           preferences: updatedUser.preferences,
@@ -266,8 +316,36 @@ export const PUT = withApiHandler(
         householdProfile: updatedHousehold,
       },
       {
-        message: "Profile and household environment updated successfully",
+        message: "Profile and settings updated successfully",
       }
+    );
+  },
+  { requireAuth: true }
+);
+
+/**
+ * DELETE /api/profile
+ * GDPR & Privacy-by-design compliant account deletion.
+ * Wipes all user records, household details, daily plans, actions, and notifications.
+ */
+export const DELETE = withApiHandler(
+  async (_req: NextRequest, _ctx, user) => {
+    await connectToDatabase();
+    const userId = user!.id;
+
+    await Promise.all([
+      User.findByIdAndDelete(userId),
+      HouseholdProfile.deleteMany({ userId }),
+      DailyPlan.deleteMany({ userId }),
+      UserAction.deleteMany({ userId }),
+      GamificationProfile.deleteMany({ userId }),
+      ChatSession.deleteMany({ userId }),
+      Notification.deleteMany({ userId }),
+    ]);
+
+    return apiSuccess(
+      { deleted: true },
+      { message: "Account and associated health records have been permanently deleted." }
     );
   },
   { requireAuth: true }
